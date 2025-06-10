@@ -472,9 +472,160 @@
 </div>
 
 <script>
-// ===== CẤU HÌNH GOOGLE APPS SCRIPT =====
-// Thay thế URL này bằng URL Web App của bạn từ Google Apps Script
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxL4zQfzKXBwPoYcly5yyWAxG9x_ogbpVj-BACbGP5dUspQ7W3yGwRKR8dImgdOIKSi/exec';
+// URL của Google Apps Script (thay bằng URL thực tế của bạn)
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxL4zQFzKXBw0QYClySyWAxG9x_qebpVj-BACbGP5dUsP074JyGwRK8BdImgdOIKSI/exec';
+
+// JSONP helper function
+function jsonp(url, params = {}, timeout = 30000) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+    
+    // Add callback parameter
+    params.callback = callbackName;
+    
+    // Build URL with parameters
+    const urlParams = new URLSearchParams(params);
+    const fullUrl = url + '?' + urlParams.toString();
+    
+    // Create script element
+    const script = document.createElement('script');
+    script.src = fullUrl;
+    
+    // Set timeout
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error('JSONP request timeout'));
+    }, timeout);
+    
+    // Global callback function
+    window[callbackName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+    
+    // Cleanup function
+    function cleanup() {
+      clearTimeout(timeoutId);
+      document.head.removeChild(script);
+      delete window[callbackName];
+    }
+    
+    // Handle script error
+    script.onerror = function() {
+      cleanup();
+      reject(new Error('JSONP script loading failed'));
+    };
+    
+    // Add script to head
+    document.head.appendChild(script);
+  });
+}
+
+// API call functions
+async function loadData() {
+  try {
+    console.log('Loading data...');
+    updateStatus('Đang tải dữ liệu...', 'loading');
+    
+    const result = await jsonp(SCRIPT_URL, { action: 'getData' });
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    console.log('Data loaded:', result);
+    
+    // Clear existing data
+    gameData.length = 0;
+    
+    // Add loaded data
+    if (Array.isArray(result) && result.length > 0) {
+      gameData.push(...result);
+      updateStatus(`Đã tải ${result.length} tài khoản`, 'success');
+    } else {
+      updateStatus('Không có dữ liệu', 'info');
+    }
+    
+    renderTable();
+    
+  } catch (error) {
+    console.error('Load data error:', error);
+    updateStatus('Lỗi khi tải dữ liệu: ' + error.message, 'error');
+  }
+}
+
+async function saveData() {
+  try {
+    console.log('Saving data...', gameData);
+    updateStatus('Đang lưu dữ liệu...', 'loading');
+    
+    const dataToSave = JSON.stringify(gameData);
+    
+    const result = await jsonp(SCRIPT_URL, { 
+      action: 'saveData', 
+      data: encodeURIComponent(dataToSave)
+    });
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    console.log('Data saved:', result);
+    updateStatus('Đã lưu dữ liệu thành công!', 'success');
+    
+  } catch (error) {
+    console.error('Save data error:', error);
+    updateStatus('Lỗi khi lưu dữ liệu: ' + error.message, 'error');
+  }
+}
+
+// Status update function
+function updateStatus(message, type = 'info') {
+  const statusElement = document.getElementById('status');
+  if (statusElement) {
+    statusElement.textContent = message;
+    statusElement.className = 'status ' + type;
+    
+    // Auto clear success/info messages after 3 seconds
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => {
+        if (statusElement.textContent === message) {
+          statusElement.textContent = 'Sẵn sàng';
+          statusElement.className = 'status';
+        }
+      }, 3000);
+    }
+  }
+  console.log(`Status: ${message} (${type})`);
+}
+
+// Remove ServiceWorker registration to fix the error
+// Comment out or remove this block in your HTML:
+/*
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(registration => console.log('SW registered'))
+    .catch(error => console.log('SW registration failed:', error));
+}
+*/
+
+// Example usage - replace your existing event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Load data on page load
+  loadData();
+  
+  // Save button
+  const saveBtn = document.getElementById('saveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveData);
+  }
+  
+  // Refresh button
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', loadData);
+  }
+});
 
 // ===== BIẾN TOÀN CỤC =====
 let data = [];
