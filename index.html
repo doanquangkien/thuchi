@@ -11,7 +11,7 @@
  --danger-color: #ff6b6b;
  --success-color: #10b981;
  --warning-color: #f59e0b;
- --info-color: #3b82f6; /* MỚI: Màu cho nút reset */
+ --info-color: #3b82f6; 
  --background-dark1: #1a1a2e;
  --background-dark2: #16213e;
  --background-dark3: #0f3460;
@@ -73,6 +73,8 @@
  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4); }
  .btn-secondary { background: linear-gradient(135deg, #64748b, #475569); color: white; box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3); }
  .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4); }
+ .btn-info { background: linear-gradient(135deg, var(--info-color), #2563eb); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
+ .btn-info:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); }
 
  .server-section {
  background: var(--white); border-radius: 20px; margin-bottom: 25px;
@@ -106,7 +108,7 @@
  width: 100px; text-align: center; border: 1px solid var(--primary-color);
  border-radius: 5px; padding: 5px; font-size: 1rem; font-weight: 700;
  }
- .performance-change { font-size: 0.9rem; font-weight: 600; }
+ .income-expense { font-size: 0.9rem; font-weight: 600; }
  .change-positive { color: var(--success-color); }
  .change-negative { color: var(--danger-color); }
 
@@ -147,7 +149,6 @@
  .toast.toast-danger { background-color: var(--danger-color); }
  .toast.toast-info { background-color: var(--info-color); }
 
- /* --- CSS CHO MODAL --- */
  .modal {
  position: fixed; z-index: 1000; left: 0; top: 0;
  width: 100%; height: 100%; overflow: auto;
@@ -168,19 +169,37 @@
  .close-btn { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
  .close-btn:hover, .close-btn:focus { color: black; }
  .modal-body { padding: 15px; }
+ 
+ /* --- CẢI TIẾN: CSS cho Note Modal --- */
  #noteModal .modal-body { display: flex; flex-direction: column; gap: 15px; }
  #noteModal #noteModalInfo { font-size: 1.1rem; text-align: center; }
+ #noteModal #noteInputGroup { display: flex; gap: 10px; }
  #noteModal #noteInput {
-    width: 100%; padding: 12px; font-size: 1rem;
+    flex-grow: 1; padding: 12px; font-size: 1rem;
     border-radius: 8px; border: 1px solid #ccc;
  }
+ #noteModal #noteOtherBtn {
+    flex-shrink: 0; padding: 0 15px;
+ }
+ #noteModal #noteAltOptions { display: none; gap: 10px; justify-content: center; }
+ #noteModal #noteAltOptions .btn { flex: 1; }
+
  .modal-actions {
     display: flex; gap: 10px; justify-content: flex-end; padding-top: 15px;
     border-top: 1px solid #e5e5e5;
  }
  .modal-actions .btn { min-width: 120px; flex: 0; }
  
+ /* --- CẢI TIẾN: CSS cho History Modal --- */
  #historyModal .modal-body { max-height: 60vh; overflow-y: auto; }
+ #historyModal .lifetime-stats {
+    padding: 15px; margin-bottom: 15px; background: var(--light-gray);
+    border-radius: 10px; text-align: center; display: flex;
+    justify-content: space-around; font-size: 1.1rem;
+ }
+ #historyModal .stat-item span { display: block; font-weight: 700; }
+ #historyModal .stat-item .change-positive { font-size: 1.3rem; }
+ #historyModal .stat-item .change-negative { font-size: 1.3rem; }
  .history-table { width: 100%; border-collapse: collapse; }
  .history-table th, .history-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
  .history-table th { background-color: #f2f2f2; }
@@ -200,6 +219,7 @@
  #toast-container { top: 10px; right: 10px; left: 10px; }
  .toast { width: 100%; }
  .modal-content { width: 95%; max-width: 450px; }
+ #historyModal .lifetime-stats { flex-direction: column; gap: 10px; }
  }
  @media (max-width: 480px) {
     th, td { font-size: 12px; }
@@ -207,7 +227,6 @@
     .btn-small { width: 32px; height: 32px; }
  }
 
- /* Animation */
  .fade-in { animation: fadeIn 0.4s ease-in-out; }
  @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
  </style>
@@ -230,6 +249,7 @@
         </div>
         <div class="form-buttons">
             <button class="btn btn-primary" onclick="addOrUpdate()"><i class="fa-solid fa-save"></i> Lưu / Cập nhật</button>
+            <button class="btn btn-info" onclick="clearForm()"><i class="fa-solid fa-eraser"></i> Hủy / Làm mới</button>
             <button class="btn btn-danger" onclick="resetAll()"><i class="fa-solid fa-trash-alt"></i> Xoá tất cả</button>
         </div>
     </div>
@@ -254,6 +274,17 @@
                 <span class="close-btn" onclick="closeHistoryModal()">×</span>
             </div>
             <div class="modal-body">
+                <!-- CẢI TIẾN: Thống kê trọn đời -->
+                <div class="lifetime-stats">
+                    <div class="stat-item">
+                        Tổng Thu Trọn Đời
+                        <span id="lifetimeIncome" class="change-positive"></span>
+                    </div>
+                    <div class="stat-item">
+                        Tổng Chi Trọn Đời
+                        <span id="lifetimeExpense" class="change-negative"></span>
+                    </div>
+                </div>
                 <table class="history-table">
                     <thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead>
                     <tbody id="historyTableBody"></tbody>
@@ -271,7 +302,15 @@
             </div>
             <div class="modal-body">
                 <p id="noteModalInfo"></p>
-                <input type="text" id="noteInput" placeholder="Nhập ghi chú...">
+                <!-- CẢI TIẾN: Luồng nhập ghi chú mới -->
+                <div id="noteInputGroup">
+                    <input type="text" id="noteInput" placeholder="Nhập ghi chú...">
+                    <button id="noteOtherBtn" class="btn btn-secondary" onclick="showAltNoteOptions()">Khác...</button>
+                </div>
+                <div id="noteAltOptions">
+                     <button class="btn btn-secondary" onclick="setNoteAndConfirm('Chuyển Kim Cương')">Chuyển KC</button>
+                     <button class="btn btn-warning" onclick="setNoteAndConfirm('Bán Kim Cương')">Bán KC</button>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeNoteModal()">Hủy</button>
@@ -295,7 +334,6 @@ function migrateData() {
             }];
             needsSave = true;
         }
-        // Thêm trường mới cho dữ liệu cũ
         if (!item.hasOwnProperty('performanceResetTimestamp')) {
             item.performanceResetTimestamp = null;
             needsSave = true;
@@ -319,36 +357,30 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// *** TỐI ƯU HÓA: Hàm tính hiệu suất chung ***
-function calculatePerformance(history, days, resetTimestamp) {
-    if (history.length === 0) return 0;
+// *** CẢI TIẾN: Hàm tính Tổng Thu / Tổng Chi ***
+function calculateIncomeExpense(history, resetTimestamp = null) {
+    let income = 0;
+    let expense = 0;
+    if (!history) return { income, expense };
 
-    const now = new Date();
-    let startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-    
-    // Nếu có điểm reset và điểm đó mới hơn startDate, dùng điểm reset
-    if (resetTimestamp && new Date(resetTimestamp) > startDate) {
-        startDate = new Date(resetTimestamp);
-    }
-    
-    let balanceAtStartDate = history[history.length - 1].newBalance; // Mặc định là số dư ban đầu
+    const startDate = resetTimestamp ? new Date(resetTimestamp) : new Date(0); // Bắt đầu từ 1970 nếu không có reset
+
+    // Lặp ngược từ giao dịch mới nhất
     for (const entry of history) {
         if (new Date(entry.timestamp) > startDate) {
-            balanceAtStartDate = entry.oldBalance;
+            const change = entry.newBalance - entry.oldBalance;
+            // Chỉ tính toán cho các giao dịch không phải là "set" khởi tạo
+            if (entry.type !== 'set') {
+                 if (change > 0) income += change;
+                 else if (change < 0) expense += Math.abs(change);
+            }
         } else {
-            break; 
+            // Vì lịch sử được sắp xếp, chúng ta có thể dừng sớm
+            break;
         }
     }
-    const currentBalance = history[0].newBalance;
-    return currentBalance - balanceAtStartDate;
+    return { income, expense };
 }
-
-function renderPerformance(change) {
-    if (change > 0) return `<span class="performance-change change-positive"><i class="fa-solid fa-arrow-up"></i> ${change.toLocaleString()}</span>`;
-    if (change < 0) return `<span class="performance-change change-negative"><i class="fa-solid fa-arrow-down"></i> ${Math.abs(change).toLocaleString()}</span>`;
-    return `<span class="performance-change">--</span>`;
-}
-
 
 function render(dataToRender = data) {
     const serverTables = document.getElementById("serverTables");
@@ -356,11 +388,12 @@ function render(dataToRender = data) {
     const existingServers = [...new Set(data.map(item => item.server))];
     const serverList = document.getElementById('server-list');
     serverList.innerHTML = existingServers.map(s => `<option value="${s}"></option>`).join('');
-    const grouped = {};
-    dataToRender.forEach((item) => {
-        if (!grouped[item.server]) grouped[item.server] = [];
-        grouped[item.server].push(item);
-    });
+    
+    const grouped = dataToRender.reduce((acc, item) => {
+        (acc[item.server] = acc[item.server] || []).push(item);
+        return acc;
+    }, {});
+
     if (Object.keys(grouped).length === 0) {
         const searchTerm = document.getElementById('searchInput').value;
         const emptyText = searchTerm 
@@ -373,8 +406,8 @@ function render(dataToRender = data) {
             const rows = grouped[server].map(item => {
                 const originalIndex = data.findIndex(x => x.account === item.account && x.server === item.server);
                 
-                const change24h = calculatePerformance(item.history, 1, item.performanceResetTimestamp);
-                const change7d = calculatePerformance(item.history, 7, item.performanceResetTimestamp);
+                // *** CẢI TIẾN: Tính toán thu chi ***
+                const { income, expense } = calculateIncomeExpense(item.history, item.performanceResetTimestamp);
                 
                 return `
                     <tr class="fade-in">
@@ -382,11 +415,11 @@ function render(dataToRender = data) {
                         <td class="diamond-count" onclick="makeEditable(this, ${originalIndex})">
                             <span>${item.current.toLocaleString()}</span>
                         </td>
-                        <td>${renderPerformance(change24h)}</td>
-                        <td>${renderPerformance(change7d)}</td>
+                        <td class="income-expense change-positive">${income > 0 ? `+${income.toLocaleString()}` : '--'}</td>
+                        <td class="income-expense change-negative">${expense > 0 ? `-${expense.toLocaleString()}` : '--'}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-sync" onclick="resetPerformance(${originalIndex})" title="Reset hiệu suất"><i class="fa-solid fa-sync-alt"></i></button>
+                                <button class="btn-small btn-sync" onclick="resetIncomeExpense(${originalIndex})" title="Reset bộ đếm Thu/Chi"><i class="fa-solid fa-sync-alt"></i></button>
                                 <button class="btn-small btn-history" onclick="showHistory(${originalIndex})" title="Xem lịch sử"><i class="fa-solid fa-history"></i></button>
                                 <button class="btn-small btn-edit" onclick="edit(${originalIndex})" title="Chỉnh sửa tên/server"><i class="fa-solid fa-pencil"></i></button>
                                 <button class="btn-small btn-delete" onclick="del(${originalIndex})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
@@ -402,7 +435,7 @@ function render(dataToRender = data) {
                         <div class="server-stats">${total.toLocaleString()} KC</div>
                     </div>
                     <table>
-                        <thead><tr><th>Account</th><th>Kim cương</th><th>HS 24h</th><th>HS 7 ngày</th><th>Hành động</th></tr></thead>
+                        <thead><tr><th>Account</th><th>Kim cương</th><th>Tổng Thu</th><th>Tổng Chi</th><th>Hành động</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </div>`;
@@ -416,28 +449,32 @@ function addOrUpdate() {
     const currentStr = document.getElementById("current").value;
     const current = currentStr ? parseInt(currentStr) : NaN;
     const editIndex = document.getElementById("editIndex").value;
-    if (!account || !server) { alert("Vui lòng nhập Tên account và Server!"); return; }
+    if (!account || !server) { showToast("Vui lòng nhập Tên account và Server!", "danger"); return; }
     
     let isUpdating = false;
     if (editIndex !== "") {
-        if (!isNaN(current) && current < 0) { alert("Số kim cương không thể âm!"); return; }
+        if (!isNaN(current) && current < 0) { showToast("Số kim cương không thể âm!", "danger"); return; }
         const originalItem = data[parseInt(editIndex)];
         const isDuplicate = data.some((item, index) => 
             item.account === account && item.server === server && index != parseInt(editIndex));
-        if(isDuplicate) { alert(`Lỗi! Account "${account}" đã tồn tại trên server "${server}".`); return; }
+        if(isDuplicate) { showToast(`Lỗi! Account "${account}" đã tồn tại trên server "${server}".`, "danger"); return; }
+        
         originalItem.account = account; originalItem.server = server;
-        if (!isNaN(current)) addHistoryEntry(parseInt(editIndex), current, 'Cập nhật thủ công');
+        if (!isNaN(current)) {
+            addHistoryEntry(parseInt(editIndex), current, 'Cập nhật thủ công qua form');
+        }
         isUpdating = true;
     } else {
-        if (isNaN(current)) { alert("Vui lòng nhập Kim cương khởi tạo!"); return; }
-        if (current < 0) { alert("Số kim cương không thể âm!"); return; }
+        if (isNaN(current)) { showToast("Vui lòng nhập Kim cương khởi tạo!", "danger"); return; }
+        if (current < 0) { showToast("Số kim cương không thể âm!", "danger"); return; }
         const isDuplicate = data.some(item => item.account === account && item.server === server);
-        if (isDuplicate) { alert(`Account "${account}" đã tồn tại trên server "${server}".`); return; }
-        const newItem = { account, server, current, history: [], performanceResetTimestamp: null };
+        if (isDuplicate) { showToast(`Account "${account}" đã tồn tại trên server "${server}".`, "danger"); return; }
+        
+        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null };
         data.push(newItem);
-        const newIndex = data.length - 1;
-        addHistoryEntry(newIndex, current, 'Khởi tạo tài khoản');
+        addHistoryEntry(data.length - 1, current, 'Khởi tạo tài khoản');
     }
+
     save(); render();
     showToast(`Account đã được ${isUpdating ? 'cập nhật' : 'thêm mới'}!`, 'success');
     clearForm();
@@ -448,7 +485,12 @@ function edit(index) {
     document.getElementById("editIndex").value = index;
     document.getElementById("account").value = item.account;
     document.getElementById("server").value = item.server;
+    document.getElementById("current").value = "";
     document.getElementById("current").placeholder = `KC hiện tại: ${item.current.toLocaleString()} (để trống nếu không đổi)`;
+    
+    const updateButton = document.querySelector('.form-buttons .btn-primary');
+    updateButton.innerHTML = '<i class="fa-solid fa-save"></i> Cập nhật Account';
+
     document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
     document.getElementById("account").focus();
 }
@@ -476,6 +518,10 @@ function clearForm() {
     document.getElementById("current").value = "";
     document.getElementById("editIndex").value = "";
     document.getElementById("current").placeholder = "Kim cương khởi tạo";
+    
+    const updateButton = document.querySelector('.form-buttons .btn-primary');
+    updateButton.innerHTML = '<i class="fa-solid fa-save"></i> Lưu / Cập nhật';
+
     document.getElementById("account").focus();
 }
 
@@ -500,78 +546,117 @@ function makeEditable(tdElement, index) {
     };
 }
 
+// *** CẢI TIẾN: Luồng xử lý modal ghi chú ***
 function saveDirectEdit(input, index) {
     if (!document.body.contains(input)) return;
     const newValue = parseInt(input.value);
     const item = data[index];
     const originalValue = item.current;
 
-    if (isNaN(newValue) || newValue < 0) { alert("Số kim cương không hợp lệ!"); render(); return; }
+    if (isNaN(newValue) || newValue < 0) { showToast("Số kim cương không hợp lệ!", "danger"); render(); return; }
     if (newValue === originalValue) { render(); return; }
 
     const change = newValue - originalValue;
-    let defaultNote = (change > 0) ? "Bán vật phẩm" : "Mua vật phẩm";
     
     _noteModalState = { index, newValue };
     document.getElementById('noteModalInfo').innerHTML = 
         `Thay đổi KC từ <b>${originalValue.toLocaleString()}</b> thành <b>${newValue.toLocaleString()}</b> (${change > 0 ? '+' : ''}${change.toLocaleString()})`;
+    
     const noteInput = document.getElementById('noteInput');
-    noteInput.value = defaultNote;
+    const noteOtherBtn = document.getElementById('noteOtherBtn');
+    const noteAltOptions = document.getElementById('noteAltOptions');
+    
+    if (change > 0) {
+        noteInput.value = "Bán vật phẩm";
+        noteOtherBtn.style.display = 'none'; // Ẩn nút "Khác"
+        noteAltOptions.style.display = 'none';
+    } else {
+        noteInput.value = "Mua vật phẩm";
+        noteOtherBtn.style.display = 'inline-flex'; // Hiện nút "Khác"
+        noteAltOptions.style.display = 'none';
+    }
+    document.getElementById('noteInputGroup').style.display = 'flex';
     document.getElementById('noteModal').classList.add('active');
     noteInput.focus(); noteInput.select();
 }
 
-// *** MỚI: Hàm reset hiệu suất ***
-function resetPerformance(index) {
-    const item = data[index];
-    if (confirm(`Bạn có chắc muốn reset lại điểm mốc tính hiệu suất cho account "${item.account}"?\n\nMọi tính toán sẽ bắt đầu lại từ bây giờ.`)) {
-        item.performanceResetTimestamp = new Date().toISOString();
-        save();
-        render();
-        showToast(`Đã reset hiệu suất cho ${item.account}`, 'info');
-    }
+function showAltNoteOptions() {
+    document.getElementById('noteInputGroup').style.display = 'none';
+    document.getElementById('noteAltOptions').style.display = 'flex';
+}
+
+function setNoteAndConfirm(note) {
+    document.getElementById('noteInput').value = note;
+    confirmNoteChange();
 }
 
 function confirmNoteChange() {
     const { index, newValue } = _noteModalState;
+    if(index === undefined) return;
     const note = document.getElementById('noteInput').value.trim() || 'Không có ghi chú';
     
     addHistoryEntry(index, newValue, note);
     save(); render();
-    showToast(`Đã cập nhật KC cho ${data[index].account}!`);
+    showToast(`Đã cập nhật KC cho ${data[index].account}!`, "success");
     closeNoteModal();
+}
+
+// *** CẢI TIẾN: Nút Reset Thu/Chi ***
+function resetIncomeExpense(index) {
+    const item = data[index];
+    if (confirm(`Bạn có chắc muốn reset bộ đếm Thu/Chi cho account "${item.account}"?\n\nLịch sử giao dịch vẫn được giữ lại.`)) {
+        item.performanceResetTimestamp = new Date().toISOString();
+        save();
+        render();
+        showToast(`Đã reset Thu/Chi cho ${item.account}`, 'info');
+    }
 }
 
 function addHistoryEntry(index, newBalance, note) {
     const item = data[index];
-    const oldBalance = item.current;
+    if(!item) return;
+
+    const oldBalance = item.current || 0;
     const change = newBalance - oldBalance;
     
     let type = 'set';
-    if(item.history.length > 0) { type = change > 0 ? 'add' : 'subtract'; }
+    if(item.history && item.history.length > 0) { 
+        type = change > 0 ? 'add' : 'subtract'; 
+    }
 
     item.history.unshift({
         timestamp: new Date().toISOString(), type: type, amount: Math.abs(change),
         note: note, oldBalance: oldBalance, newBalance: newBalance
     });
-    if(item.history.length > 100) item.history.pop();
+    if(item.history.length > 200) item.history.pop(); // Tăng giới hạn một chút
     item.current = newBalance;
 }
 
+// *** CẢI TIẾN: Hiển thị thống kê trọn đời ***
 function showHistory(index) {
     const item = data[index];
     const modal = document.getElementById('historyModal');
     document.getElementById('historyModalTitle').textContent = `Nhật ký: ${item.account} (${item.server})`;
+    
+    // Tính toán và hiển thị thống kê trọn đời
+    const lifetime = calculateIncomeExpense(item.history, null); // null timestamp = tính tất cả
+    document.getElementById('lifetimeIncome').textContent = `+${lifetime.income.toLocaleString()}`;
+    document.getElementById('lifetimeExpense').textContent = `-${lifetime.expense.toLocaleString()}`;
+
     const tableBody = document.getElementById('historyTableBody');
     tableBody.innerHTML = '';
-    if (item.history.length === 0) {
+    if (!item.history || item.history.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Chưa có lịch sử giao dịch.</td></tr>';
     } else {
         item.history.forEach(entry => {
             const change = entry.newBalance - entry.oldBalance;
-            let changeHTML = (entry.type === 'set') ? `<span>${change.toLocaleString()}</span>` :
-                             (change > 0) ? `<span class="change-positive">+${change.toLocaleString()}</span>` :
+            let changeHTML;
+            if (entry.type === 'set') {
+                 changeHTML = `<span>${entry.newBalance.toLocaleString()}</span>`;
+            } else {
+                changeHTML = (change > 0) ? `<span class="change-positive">+${change.toLocaleString()}</span>` :
                              `<span class="change-negative">${change.toLocaleString()}</span>`;
+            }
             tableBody.innerHTML += `
                 <tr>
                     <td>${new Date(entry.timestamp).toLocaleString('vi-VN')}</td>
@@ -583,6 +668,7 @@ function showHistory(index) {
     }
     modal.classList.add('active');
 }
+
 function closeHistoryModal() { document.getElementById('historyModal').classList.remove('active'); }
 function closeNoteModal() {
     document.getElementById('noteModal').classList.remove('active');
@@ -591,16 +677,16 @@ function closeNoteModal() {
 }
 
 function exportData() {
-    if (data.length === 0) { alert("Không có dữ liệu để xuất!"); return; }
+    if (data.length === 0) { showToast("Không có dữ liệu để xuất!", "info"); return; }
     const dataStr = JSON.stringify(data, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
     a.download = `kimcuong_data_${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
 function triggerImport() { document.getElementById('importFile').click(); }
 function handleFileImport(event) {
     const file = event.target.files[0]; if (!file) return;
@@ -615,7 +701,7 @@ function handleFileImport(event) {
                 data = importedData; migrateData(); save(); render();
                 showToast("Nhập dữ liệu thành công!", "success");
             }
-        } catch (error) { alert("Lỗi khi đọc file: " + error.message);
+        } catch (error) { showToast("Lỗi khi đọc file: " + error.message, "danger");
         } finally { event.target.value = null; }
     };
     reader.readAsText(file);
@@ -623,9 +709,14 @@ function handleFileImport(event) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-        if (document.getElementById('noteModal').classList.contains('active')) {
+        const noteModalActive = document.getElementById('noteModal').classList.contains('active');
+        const formInputActive = document.activeElement.closest('.form-section');
+
+        if (noteModalActive) {
+            e.preventDefault();
             confirmNoteChange();
-        } else if (e.target.closest('.form-section')) {
+        } else if (formInputActive) {
+            e.preventDefault();
             addOrUpdate();
         }
     } else if (e.key === 'Escape') {
@@ -643,6 +734,7 @@ window.onclick = function(event) {
 // Khởi chạy ứng dụng
 migrateData();
 render();
+clearForm();
 
 </script>
 
