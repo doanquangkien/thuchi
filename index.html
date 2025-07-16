@@ -87,15 +87,21 @@
  padding: 20px 30px; font-size: 1.3rem; font-weight: 600;
  display: flex; align-items: center; justify-content: space-between; gap: 10px;
  }
+ /* === CSS MỚI: Thêm con trỏ và hiệu ứng cho server-stats === */
  .server-stats {
  background: var(--primary-color); padding: 8px 16px; border-radius: 20px;
  font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+ cursor: pointer; transition: transform 0.2s ease, background-color 0.2s ease;
+ }
+ .server-stats:hover {
+    transform: scale(1.05);
+    background: #5a52e8;
  }
 
  table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--white); }
  th, td { padding: 16px 10px; text-align: center; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
  th { background: var(--light-gray); color: #555; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
- tbody tr { transition: background-color 0.2s ease, opacity 0.3s ease; }
+ tbody tr { transition: background-color 0.2s ease; }
  tbody tr:hover { background: var(--light-gray); }
 
  .account-name { font-weight: 600; color: var(--text-color); }
@@ -141,7 +147,6 @@
  .btn-delete { background: var(--danger-color); color: white; }
  .btn-delete:hover { background: #ee5a52; transform: scale(1.05); }
  
- /* === CSS MỚI CHO TOGGLE SWITCH === */
  .toggle-switch {
     position: relative;
     display: inline-block;
@@ -160,7 +165,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--danger-color); /* Màu đỏ khi OFF */
+    background-color: var(--danger-color);
     transition: .4s;
     border-radius: 24px;
  }
@@ -176,12 +181,11 @@
     border-radius: 50%;
  }
  input:checked + .slider {
-    background-color: var(--success-color); /* Màu xanh khi ON */
+    background-color: var(--success-color);
  }
  input:checked + .slider:before {
     transform: translateX(20px);
  }
- /* === KẾT THÚC CSS MỚI === */
 
  .empty-state {
  text-align: center; padding: 60px 20px; background: var(--white);
@@ -221,7 +225,7 @@
  .modal-header h2 { margin: 0; font-size: 1.5rem; }
  .close-btn { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
  .close-btn:hover, .close-btn:focus { color: black; }
- .modal-body { padding: 15px; }
+ .modal-body { padding: 15px; max-height: 70vh; overflow-y: auto;}
  #noteModal .modal-body { display: flex; flex-direction: column; gap: 15px; }
  #noteModal #noteModalInfo { font-size: 1.1rem; text-align: center; }
  #noteModal #noteInputGroup { display: flex; gap: 10px; }
@@ -239,7 +243,6 @@
     border-top: 1px solid #e5e5e5;
  }
  .modal-actions .btn { min-width: 120px; flex: 0; }
- #historyModal .modal-body { max-height: 60vh; overflow-y: auto; }
  #historyModal .lifetime-stats {
     padding: 15px; margin-bottom: 15px; background: var(--light-gray);
     border-radius: 10px; text-align: center; display: flex;
@@ -279,7 +282,6 @@
  </style>
 </head>
 <body>
-<!-- DATALIST MỚI CHO GỢI Ý VỊ TRÍ -->
 <datalist id="location-suggestions"></datalist>
 
 <div class="container">
@@ -305,39 +307,34 @@
         <input type="search" id="searchInput" placeholder="Tìm theo tên account, server hoặc vị trí..." onkeyup="handleSearch()">
         <div class="controls-buttons">
             <button id="sortToggleBtn" class="btn btn-secondary" onclick="toggleSortOrder()"><i class="fa-solid fa-clock"></i> Sắp xếp theo Thời gian</button>
-            <!-- NÚT XUẤT TỔNG ĐÃ BỊ XÓA -->
             <button class="btn btn-secondary" onclick="triggerImport()"><i class="fa-solid fa-file-import"></i> Nhập Dữ Liệu (JSON)</button>
             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="handleFileImport(event)">
         </div>
     </div>
     <div id="serverTables"></div>
     <div id="toast-container"></div>
+    
+    <!-- Modal Lịch sử tài khoản -->
     <div id="historyModal" class="modal">
-        <div class="modal-content">
-            <!-- HEADER CỦA MODAL LỊCH SỬ ĐƯỢC CẬP NHẬT -->
-            <div class="modal-header">
-                <h2 id="historyModalTitle">Lịch sử giao dịch</h2>
-                <div>
-                    <button id="exportHistoryBtn" class="btn btn-info" style="min-width: unset; padding: 8px 15px;">
-                        <i class="fa-solid fa-file-export"></i> Xuất JSON
-                    </button>
-                    <span class="close-btn" onclick="closeHistoryModal()" style="margin-left: 15px;">×</span>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div class="lifetime-stats">
-                    <div class="stat-item">Tổng Thu Trọn Đời<span id="lifetimeIncome" class="change-positive"></span></div>
-                    <div class="stat-item">Tổng Chi Trọn Đời<span id="lifetimeExpense" class="change-negative"></span></div>
-                </div>
-                <table class="history-table">
-                    <thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead>
-                    <tbody id="historyTableBody"></tbody>
-                </table>
-            </div>
-        </div>
+        <div class="modal-content"><div class="modal-header"><h2>Lịch sử giao dịch</h2><div><button id="exportHistoryBtn" class="btn btn-info" style="min-width: unset; padding: 8px 15px;"><i class="fa-solid fa-file-export"></i> Xuất JSON</button><span class="close-btn" onclick="closeHistoryModal()" style="margin-left: 15px;">×</span></div></div><div class="modal-body"><div class="lifetime-stats"><div class="stat-item">Tổng Thu Trọn Đời<span id="lifetimeIncome" class="change-positive"></span></div><div class="stat-item">Tổng Chi Trọn Đời<span id="lifetimeExpense" class="change-negative"></span></div></div><table class="history-table"><thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead><tbody id="historyTableBody"></tbody></table></div></div>
     </div>
+    
+    <!-- Modal Ghi chú -->
     <div id="noteModal" class="modal">
         <div class="modal-content"><div class="modal-header"><h2>Ghi chú thay đổi</h2><span class="close-btn" onclick="closeNoteModal()">×</span></div><div class="modal-body"><p id="noteModalInfo"></p><div id="noteInputGroup"><input type="text" id="noteInput" placeholder="Nhập ghi chú..."><button id="noteOtherBtn" class="btn btn-secondary" onclick="showAltNoteOptions()">Khác...</button></div><div id="noteAltOptions"><button class="btn btn-secondary" onclick="setNoteAndConfirm('Chuyển Kim Cương')">Chuyển KC</button><button class="btn btn-warning" onclick="setNoteAndConfirm('Bán Kim Cương')">Bán KC</button></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeNoteModal()">Hủy</button><button class="btn btn-primary" onclick="confirmNoteChange()">Xác nhận</button></div></div>
+    </div>
+
+    <!-- === HTML MỚI: MODAL THỐNG KÊ SERVER HÀNG NGÀY === -->
+    <div id="serverStatsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="serverStatsModalTitle">Thống kê Server</h2>
+                <span class="close-btn" onclick="closeServerStatsModal()">×</span>
+            </div>
+            <div class="modal-body" id="serverStatsBody">
+                <!-- Nội dung sẽ được tạo bởi JavaScript -->
+            </div>
+        </div>
     </div>
 </div>
 
@@ -361,9 +358,8 @@ function migrateData() {
             item.location = '';
             needsSave = true;
         }
-        // THÊM TRƯỜNG STATUS MỚI NẾU CHƯA CÓ
         if (!item.hasOwnProperty('status')) {
-            item.status = 'on'; // Mặc định là 'on'
+            item.status = 'on';
             needsSave = true;
         }
     });
@@ -429,14 +425,13 @@ function toggleSortOrder() {
     render();
 }
 
-// === HÀM MỚI: TOGGLE TRẠNG THÁI ON/OFF ===
 function toggleAccountStatus(index, event) {
-    event.stopPropagation(); // Ngăn các sự kiện click khác trong hàng
+    event.stopPropagation();
     const item = data[index];
     item.status = (item.status === 'on') ? 'off' : 'on';
     save();
     showToast(`Đã chuyển trạng thái của ${item.account} thành ${item.status.toUpperCase()}`, 'info');
-    render(); // Vẽ lại để cập nhật giao diện
+    render();
 }
 
 function render(dataToRender = data) {
@@ -459,7 +454,7 @@ function render(dataToRender = data) {
                 const lastUpdatedTimestamp = item.history && item.history.length > 0 ? item.history[0].timestamp : null;
                 const locationDisplay = item.location ? item.location : `<span class="placeholder">Nhấp để thêm</span>`;
                 const isChecked = item.status === 'on' ? 'checked' : '';
-                const rowStyle = item.status === 'off' ? 'opacity: 0.5;' : '';
+                const rowStyle = ''; // Bỏ hiệu ứng cho tài khoản OFF
 
                 return `
                     <tr class="fade-in" style="${rowStyle}">
@@ -475,10 +470,10 @@ function render(dataToRender = data) {
                                     <input type="checkbox" onchange="toggleAccountStatus(${originalIndex}, event)" ${isChecked}>
                                     <span class="slider"></span>
                                 </label>
-                                <button class="btn-small btn-check" onclick="manualUpdateTimestamp(${originalIndex})" title="Check thủ công (cập nhật thời gian)"><i class="fa-solid fa-check"></i></button>
-                                <button class="btn-small btn-sync" onclick="resetIncomeExpense(${originalIndex})" title="Reset bộ đếm Thu/Chi"><i class="fa-solid fa-sync-alt"></i></button>
+                                <button class="btn-small btn-check" onclick="manualUpdateTimestamp(${originalIndex})" title="Check thủ công"><i class="fa-solid fa-check"></i></button>
+                                <button class="btn-small btn-sync" onclick="resetIncomeExpense(${originalIndex})" title="Reset Thu/Chi"><i class="fa-solid fa-sync-alt"></i></button>
                                 <button class="btn-small btn-history" onclick="showHistory(${originalIndex})" title="Xem lịch sử"><i class="fa-solid fa-history"></i></button>
-                                <button class="btn-small btn-edit" onclick="edit(${originalIndex})" title="Chỉnh sửa tên/server"><i class="fa-solid fa-pencil"></i></button>
+                                <button class="btn-small btn-edit" onclick="edit(${originalIndex})" title="Chỉnh sửa"><i class="fa-solid fa-pencil"></i></button>
                                 <button class="btn-small btn-delete" onclick="del(${originalIndex})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </td>
@@ -489,7 +484,7 @@ function render(dataToRender = data) {
                 <div class="server-section fade-in">
                     <div class="server-header">
                         <span><i class="fa-solid fa-server"></i> Server: ${server} (${grouped[server].length} acc)</span>
-                        <div class="server-stats">${total.toLocaleString()} KC</div>
+                        <div class="server-stats" onclick="showServerStats('${server}')" title="Xem thống kê hàng ngày của server">${total.toLocaleString()} KC</div>
                     </div>
                     <table><thead><tr><th>Account</th><th>Kim cương</th><th>Tổng Thu</th><th>Tổng Chi</th><th>Cập nhật</th><th>Vị trí</th><th>Hành động</th></tr></thead><tbody>${rows}</tbody></table>
                 </div>`;
@@ -519,7 +514,7 @@ function addOrUpdate() {
         if (isNaN(current) || current < 0) { showToast("Kim cương khởi tạo không hợp lệ!", "danger"); return; }
         const isDuplicate = data.some(item => item.account === account && item.server === server);
         if (isDuplicate) { showToast(`Account "${account}" đã tồn tại trên server "${server}".`, "danger"); return; }
-        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null, location: '', status: 'on' }; // Thêm location và status
+        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null, location: '', status: 'on' };
         data.push(newItem);
         addHistoryEntry(data.length - 1, current, 'Khởi tạo tài khoản');
     }
@@ -613,7 +608,6 @@ function saveDirectEdit(input, index) {
     noteInput.focus(); noteInput.select();
 }
 
-// === HÀM MỚI: CẬP NHẬT DANH SÁCH GỢI Ý VỊ TRÍ ===
 function updateLocationSuggestions() {
     const locations = [...new Set(data.map(item => item.location).filter(Boolean))];
     const datalist = document.getElementById('location-suggestions');
@@ -640,7 +634,7 @@ function saveLocationEdit(input, index) {
     if (newLocation === (item.location || '')) { render(); return; }
     item.location = newLocation;
     save();
-    updateLocationSuggestions(); // Cập nhật danh sách gợi ý
+    updateLocationSuggestions();
     showToast(`Đã cập nhật vị trí cho ${item.account}`, 'info');
     render();
 }
@@ -689,11 +683,8 @@ function showHistory(index) {
     const item = data[index];
     const modal = document.getElementById('historyModal');
     document.getElementById('historyModalTitle').textContent = `Nhật ký: ${item.account} (${item.server})`;
-
-    // GÁN SỰ KIỆN ONCLICK CHO NÚT XUẤT JSON MỚI
     const exportBtn = document.getElementById('exportHistoryBtn');
     exportBtn.onclick = () => exportHistoryForAccount(index);
-
     const lifetime = calculateIncomeExpense(item.history, null);
     document.getElementById('lifetimeIncome').textContent = `+${lifetime.income.toLocaleString()}`;
     document.getElementById('lifetimeExpense').textContent = `-${lifetime.expense.toLocaleString()}`;
@@ -719,23 +710,76 @@ function closeNoteModal() {
     _noteModalState = {};
     render();
 }
+// === HÀM MỚI: ĐÓNG MODAL THỐNG KÊ SERVER ===
+function closeServerStatsModal() { document.getElementById('serverStatsModal').classList.remove('active'); }
 
-// === HÀM MỚI: XUẤT LỊCH SỬ JSON CHO TỪNG TÀI KHOẢN ===
+// === HÀM MỚI: HIỂN THỊ THỐNG KÊ HÀNG NGÀY CỦA SERVER ===
+function showServerStats(serverName) {
+    const modal = document.getElementById('serverStatsModal');
+    const modalTitle = document.getElementById('serverStatsModalTitle');
+    const modalBody = document.getElementById('serverStatsBody');
+    
+    modalTitle.textContent = `Thống kê hàng ngày: Server ${serverName}`;
+    modalBody.innerHTML = 'Đang tính toán...';
+
+    const accountsOnServer = data.filter(item => item.server === serverName);
+    const dailyStats = {};
+
+    accountsOnServer.forEach(account => {
+        if (account.history) {
+            account.history.forEach(entry => {
+                // Chỉ tính các giao dịch có thay đổi
+                if (entry.oldBalance === entry.newBalance || entry.type === 'check') return;
+
+                const dateKey = new Date(entry.timestamp).toISOString().slice(0, 10); // YYYY-MM-DD
+                if (!dailyStats[dateKey]) {
+                    dailyStats[dateKey] = { income: 0, expense: 0 };
+                }
+                const change = entry.newBalance - entry.oldBalance;
+                if (change > 0) {
+                    dailyStats[dateKey].income += change;
+                } else {
+                    dailyStats[dateKey].expense += Math.abs(change);
+                }
+            });
+        }
+    });
+
+    const sortedDates = Object.keys(dailyStats).sort().reverse(); // Sắp xếp ngày mới nhất lên đầu
+
+    if (sortedDates.length === 0) {
+        modalBody.innerHTML = '<p style="text-align: center; color: #666;">Không có dữ liệu giao dịch cho server này.</p>';
+    } else {
+        let tableHTML = '<table class="history-table"><thead><tr><th>Ngày</th><th>Tổng Thu</th><th>Tổng Chi</th></tr></thead><tbody>';
+        sortedDates.forEach(dateKey => {
+            const stats = dailyStats[dateKey];
+            const [year, month, day] = dateKey.split('-');
+            const formattedDate = `${day}/${month}/${year}`;
+            tableHTML += `
+                <tr>
+                    <td>${formattedDate}</td>
+                    <td class="change-positive">+${stats.income.toLocaleString()}</td>
+                    <td class="change-negative">-${stats.expense.toLocaleString()}</td>
+                </tr>
+            `;
+        });
+        tableHTML += '</tbody></table>';
+        modalBody.innerHTML = tableHTML;
+    }
+
+    modal.classList.add('active');
+}
+
 function exportHistoryForAccount(index) {
     const item = data[index];
-    if (!item || !item.history || item.history.length === 0) {
-        showToast("Không có lịch sử để xuất!", "info");
-        return;
-    }
+    if (!item || !item.history || item.history.length === 0) { showToast("Không có lịch sử để xuất!", "info"); return; }
     const dataStr = JSON.stringify(item.history, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `history_${item.account}_${item.server}_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
 
@@ -769,14 +813,17 @@ document.addEventListener('keydown', function (e) {
     } else if (e.key === 'Escape') {
         if (document.getElementById('noteModal').classList.contains('active')) closeNoteModal();
         if (document.getElementById('historyModal').classList.contains('active')) closeHistoryModal();
+        if (document.getElementById('serverStatsModal').classList.contains('active')) closeServerStatsModal();
     }
 });
 
 window.onclick = function (event) {
     const historyModal = document.getElementById('historyModal');
     const noteModal = document.getElementById('noteModal');
+    const serverStatsModal = document.getElementById('serverStatsModal');
     if (event.target == historyModal) closeHistoryModal();
     if (event.target == noteModal) closeNoteModal();
+    if (event.target == serverStatsModal) closeServerStatsModal();
 }
 
 function updateRelativeTimes() {
@@ -790,7 +837,7 @@ function updateRelativeTimes() {
 migrateData();
 render();
 clearForm();
-updateLocationSuggestions(); // Tạo danh sách gợi ý vị trí khi tải trang
+updateLocationSuggestions();
 setInterval(updateRelativeTimes, 30000);
 </script>
 
