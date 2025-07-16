@@ -87,7 +87,6 @@
  padding: 20px 30px; font-size: 1.3rem; font-weight: 600;
  display: flex; align-items: center; justify-content: space-between; gap: 10px;
  }
- /* === CSS MỚI: Thêm con trỏ và hiệu ứng cho server-stats === */
  .server-stats {
  background: var(--primary-color); padding: 8px 16px; border-radius: 20px;
  font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -314,9 +313,27 @@
     <div id="serverTables"></div>
     <div id="toast-container"></div>
     
-    <!-- Modal Lịch sử tài khoản -->
+    <!-- Modal Lịch sử tài khoản (ĐÃ SỬA LỖI) -->
     <div id="historyModal" class="modal">
-        <div class="modal-content"><div class="modal-header"><h2 id="historyModalTitle">Lịch sử giao dịch</h2><div><button id="exportHistoryBtn" class="btn btn-info" style="min-width: unset; padding: 8px 15px;"><i class="fa-solid fa-file-export"></i> Xuất JSON</button><span class="close-btn" onclick="closeHistoryModal()" style="margin-left: 15px;">×</span></div></div><div class="modal-body"><div class="lifetime-stats"><div class="stat-item">Tổng Thu Trọn Đời<span id="lifetimeIncome" class="change-positive"></span></div><div class="stat-item">Tổng Chi Trọn Đời<span id="lifetimeExpense" class="change-negative"></span></div></div><table class="history-table"><thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead><tbody id="historyTableBody"></tbody></table></div></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="historyModalTitle">Lịch sử giao dịch</h2>
+                <div>
+                    <button id="exportHistoryBtn" class="btn btn-info" style="min-width: unset; padding: 8px 15px;"><i class="fa-solid fa-file-export"></i> Xuất JSON</button>
+                    <span class="close-btn" onclick="closeHistoryModal()" style="margin-left: 15px;">×</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="lifetime-stats">
+                    <div class="stat-item">Tổng Thu Trọn Đời<span id="lifetimeIncome" class="change-positive"></span></div>
+                    <div class="stat-item">Tổng Chi Trọn Đời<span id="lifetimeExpense" class="change-negative"></span></div>
+                </div>
+                <table class="history-table">
+                    <thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
     
     <!-- Modal Ghi chú -->
@@ -324,7 +341,7 @@
         <div class="modal-content"><div class="modal-header"><h2>Ghi chú thay đổi</h2><span class="close-btn" onclick="closeNoteModal()">×</span></div><div class="modal-body"><p id="noteModalInfo"></p><div id="noteInputGroup"><input type="text" id="noteInput" placeholder="Nhập ghi chú..."><button id="noteOtherBtn" class="btn btn-secondary" onclick="showAltNoteOptions()">Khác...</button></div><div id="noteAltOptions"><button class="btn btn-secondary" onclick="setNoteAndConfirm('Chuyển Kim Cương')">Chuyển KC</button><button class="btn btn-warning" onclick="setNoteAndConfirm('Bán Kim Cương')">Bán KC</button></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeNoteModal()">Hủy</button><button class="btn btn-primary" onclick="confirmNoteChange()">Xác nhận</button></div></div>
     </div>
 
-    <!-- === HTML MỚI: MODAL THỐNG KÊ SERVER HÀNG NGÀY === -->
+    <!-- Modal Thống kê Server hàng ngày -->
     <div id="serverStatsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -454,7 +471,7 @@ function render(dataToRender = data) {
                 const lastUpdatedTimestamp = item.history && item.history.length > 0 ? item.history[0].timestamp : null;
                 const locationDisplay = item.location ? item.location : `<span class="placeholder">Nhấp để thêm</span>`;
                 const isChecked = item.status === 'on' ? 'checked' : '';
-                const rowStyle = ''; // Bỏ hiệu ứng cho tài khoản OFF
+                const rowStyle = '';
 
                 return `
                     <tr class="fade-in" style="${rowStyle}">
@@ -710,10 +727,9 @@ function closeNoteModal() {
     _noteModalState = {};
     render();
 }
-// === HÀM MỚI: ĐÓNG MODAL THỐNG KÊ SERVER ===
 function closeServerStatsModal() { document.getElementById('serverStatsModal').classList.remove('active'); }
 
-// === HÀM MỚI: HIỂN THỊ THỐNG KÊ HÀNG NGÀY CỦA SERVER ===
+// === HÀM THỐNG KÊ SERVER (ĐÃ CẬP NHẬT) ===
 function showServerStats(serverName) {
     const modal = document.getElementById('serverStatsModal');
     const modalTitle = document.getElementById('serverStatsModalTitle');
@@ -728,14 +744,17 @@ function showServerStats(serverName) {
     accountsOnServer.forEach(account => {
         if (account.history) {
             account.history.forEach(entry => {
-                // Chỉ tính các giao dịch có thay đổi
                 if (entry.oldBalance === entry.newBalance || entry.type === 'check') return;
 
-                const dateKey = new Date(entry.timestamp).toISOString().slice(0, 10); // YYYY-MM-DD
+                const dateKey = new Date(entry.timestamp).toISOString().slice(0, 10);
                 if (!dailyStats[dateKey]) {
-                    dailyStats[dateKey] = { income: 0, expense: 0 };
+                    // Thêm thuộc tính balance
+                    dailyStats[dateKey] = { income: 0, expense: 0, balance: 0 };
                 }
                 const change = entry.newBalance - entry.oldBalance;
+                
+                // Cập nhật cả ba giá trị
+                dailyStats[dateKey].balance += change;
                 if (change > 0) {
                     dailyStats[dateKey].income += change;
                 } else {
@@ -745,21 +764,36 @@ function showServerStats(serverName) {
         }
     });
 
-    const sortedDates = Object.keys(dailyStats).sort().reverse(); // Sắp xếp ngày mới nhất lên đầu
+    const sortedDates = Object.keys(dailyStats).sort().reverse();
 
     if (sortedDates.length === 0) {
         modalBody.innerHTML = '<p style="text-align: center; color: #666;">Không có dữ liệu giao dịch cho server này.</p>';
     } else {
-        let tableHTML = '<table class="history-table"><thead><tr><th>Ngày</th><th>Tổng Thu</th><th>Tổng Chi</th></tr></thead><tbody>';
+        // Thêm cột "Số dư cuối" vào header
+        let tableHTML = '<table class="history-table"><thead><tr><th>Ngày</th><th>Tổng Thu</th><th>Tổng Chi</th><th>Số dư cuối</th></tr></thead><tbody>';
         sortedDates.forEach(dateKey => {
             const stats = dailyStats[dateKey];
             const [year, month, day] = dateKey.split('-');
             const formattedDate = `${day}/${month}/${year}`;
+            
+            // Chuẩn bị HTML cho cột số dư
+            const balance = stats.balance;
+            let balanceHTML;
+            if (balance > 0) {
+                balanceHTML = `<td class="change-positive">+${balance.toLocaleString()}</td>`;
+            } else if (balance < 0) {
+                balanceHTML = `<td class="change-negative">${balance.toLocaleString()}</td>`;
+            } else {
+                balanceHTML = `<td>0</td>`;
+            }
+
+            // Thêm hàng vào bảng, bao gồm cả cột số dư
             tableHTML += `
                 <tr>
                     <td>${formattedDate}</td>
                     <td class="change-positive">+${stats.income.toLocaleString()}</td>
                     <td class="change-negative">-${stats.expense.toLocaleString()}</td>
+                    ${balanceHTML}
                 </tr>
             `;
         });
