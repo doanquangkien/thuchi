@@ -103,7 +103,17 @@
  tbody tr { transition: background-color 0.2s ease; }
  tbody tr:hover { background: var(--light-gray); }
 
- .account-name { font-weight: 600; color: var(--text-color); }
+ .account-name.clickable { 
+    font-weight: 600; 
+    color: var(--primary-color);
+    cursor: pointer;
+    border-radius: 8px;
+ }
+ .account-name.clickable:hover {
+    background-color: #f0f8ff;
+    text-decoration: underline;
+ }
+
  .diamond-count {
  font-weight: 700; color: var(--primary-color); font-size: 1.1rem;
  cursor: pointer; border-radius: 8px; transition: background-color 0.2s ease;
@@ -255,6 +265,34 @@
  .history-table th { background-color: #f2f2f2; }
  .history-table .note-col { max-width: 200px; word-wrap: break-word; }
  .history-table .type-check td { color: #888; font-style: italic; }
+
+ #notesList { list-style: none; padding: 0; margin: 0; }
+ #notesList li { 
+    display: flex; align-items: flex-start; gap: 15px;
+    padding: 12px; border-bottom: 1px solid #eee;
+ }
+ #notesList li:last-child { border-bottom: none; }
+ #notesList .note-content { flex-grow: 1; }
+ #notesList .note-text { 
+    display: block; margin-bottom: 5px; white-space: pre-wrap;
+    cursor: pointer; border-radius: 5px; padding: 2px;
+}
+ #notesList .note-text:hover { background-color: #f0f8ff; }
+ #notesList .note-timestamp { font-size: 0.8rem; color: #888; }
+ #notesList .note-actions { display: flex; gap: 8px; }
+ #newNoteSection { margin-top: 20px; border-top: 1px solid #e5e5e5; padding-top: 20px; }
+ #newNoteSection textarea {
+    width: 100%; min-height: 80px; padding: 10px; font-size: 1rem;
+    border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px;
+ }
+ .history-table .note-col.editable { cursor: pointer; }
+ .history-table .note-col.editable:hover { background-color: #f0f8ff; }
+ .history-table .note-col input, #notesList .note-content textarea {
+    width: 100%; padding: 6px; font-size: 0.95rem; text-align: left;
+    border: 1px solid var(--info-color); border-radius: 5px; background: #f0f8ff;
+    resize: vertical;
+ }
+
  @media (max-width: 768px) {
  .container { padding: 15px; }
  .header h2 { font-size: 2rem; }
@@ -313,58 +351,49 @@
     <div id="serverTables"></div>
     <div id="toast-container"></div>
     
-    <!-- Modal Lịch sử tài khoản (ĐÃ SỬA LỖI) -->
     <div id="historyModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="historyModalTitle">Lịch sử giao dịch</h2>
-                <div>
-                    <button id="exportHistoryBtn" class="btn btn-info" style="min-width: unset; padding: 8px 15px;"><i class="fa-solid fa-file-export"></i> Xuất JSON</button>
-                    <span class="close-btn" onclick="closeHistoryModal()" style="margin-left: 15px;">×</span>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div class="lifetime-stats">
-                    <div class="stat-item">Tổng Thu Trọn Đời<span id="lifetimeIncome" class="change-positive"></span></div>
-                    <div class="stat-item">Tổng Chi Trọn Đời<span id="lifetimeExpense" class="change-negative"></span></div>
-                </div>
-                <table class="history-table">
-                    <thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead>
-                    <tbody id="historyTableBody"></tbody>
-                </table>
-            </div>
-        </div>
+        <div class="modal-content"><div class="modal-header"><h2 id="historyModalTitle">Lịch sử giao dịch</h2><div><button id="exportHistoryBtn" class="btn btn-info" style="min-width: unset; padding: 8px 15px;"><i class="fa-solid fa-file-export"></i> Xuất JSON</button><span class="close-btn" onclick="closeHistoryModal()" style="margin-left: 15px;">×</span></div></div><div class="modal-body"><div class="lifetime-stats"><div class="stat-item">Tổng Thu Trọn Đời<span id="lifetimeIncome" class="change-positive"></span></div><div class="stat-item">Tổng Chi Trọn Đời<span id="lifetimeExpense" class="change-negative"></span></div></div><table class="history-table"><thead><tr><th>Thời gian</th><th>Thay đổi</th><th class="note-col">Ghi chú</th><th>Số dư sau GD</th></tr></thead><tbody id="historyTableBody"></tbody></table></div></div>
     </div>
     
-    <!-- Modal Ghi chú -->
     <div id="noteModal" class="modal">
         <div class="modal-content"><div class="modal-header"><h2>Ghi chú thay đổi</h2><span class="close-btn" onclick="closeNoteModal()">×</span></div><div class="modal-body"><p id="noteModalInfo"></p><div id="noteInputGroup"><input type="text" id="noteInput" placeholder="Nhập ghi chú..."><button id="noteOtherBtn" class="btn btn-secondary" onclick="showAltNoteOptions()">Khác...</button></div><div id="noteAltOptions"><button class="btn btn-secondary" onclick="setNoteAndConfirm('Chuyển Kim Cương')">Chuyển KC</button><button class="btn btn-warning" onclick="setNoteAndConfirm('Bán Kim Cương')">Bán KC</button></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeNoteModal()">Hủy</button><button class="btn btn-primary" onclick="confirmNoteChange()">Xác nhận</button></div></div>
     </div>
 
-    <!-- Modal Thống kê Server hàng ngày -->
     <div id="serverStatsModal" class="modal">
+        <div class="modal-content"><div class="modal-header"><h2 id="serverStatsModalTitle">Thống kê Server</h2><span class="close-btn" onclick="closeServerStatsModal()">×</span></div><div class="modal-body" id="serverStatsBody"></div></div>
+    </div>
+
+    <div id="accountNotesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="serverStatsModalTitle">Thống kê Server</h2>
-                <span class="close-btn" onclick="closeServerStatsModal()">×</span>
+                <h2 id="accountNotesModalTitle">Ghi chú</h2>
+                <span class="close-btn" onclick="closeAccountNotesModal()">×</span>
             </div>
-            <div class="modal-body" id="serverStatsBody">
-                <!-- Nội dung sẽ được tạo bởi JavaScript -->
+            <div class="modal-body">
+                <ul id="notesList"></ul>
+                <div id="newNoteSection">
+                    <textarea id="newNoteInput" placeholder="Thêm ghi chú mới..."></textarea>
+                    <button class="btn btn-primary" style="flex: unset; min-width: 120px;" onclick="addNewAccountNote()">Thêm ghi chú</button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("kimcuong_data_v3")) || [];
-let _noteModalState = {};
+let data = [];
 let sortOrder = 'diamonds';
+let _noteModalState = {};
+let _accountNotesModalState = {};
 
-function migrateData() {
+function migrateData(loadedData) {
     let needsSave = false;
-    data.forEach(item => {
+    if (!Array.isArray(loadedData)) {
+        loadedData = [];
+    }
+    loadedData.forEach(item => {
         if (!item.hasOwnProperty('history')) {
-            item.history = [{ timestamp: new Date().toISOString(), type: 'set', amount: item.current, note: 'Dữ liệu được khởi tạo từ phiên bản cũ', oldBalance: 0, newBalance: item.current }];
+            item.history = [];
             needsSave = true;
         }
         if (!item.hasOwnProperty('performanceResetTimestamp')) {
@@ -379,11 +408,22 @@ function migrateData() {
             item.status = 'on';
             needsSave = true;
         }
+        if (!item.hasOwnProperty('notes')) {
+            item.notes = [];
+            needsSave = true;
+        }
     });
-    if (needsSave) save();
+    return { migratedData: loadedData, needsSave };
 }
 
-function save() { localStorage.setItem("kimcuong_data_v3", JSON.stringify(data)); }
+function save() {
+    try {
+        localStorage.setItem("kimcuong_data_v3", JSON.stringify(data));
+    } catch (e) {
+        console.error("Lỗi khi lưu dữ liệu vào localStorage:", e);
+        showToast("Lỗi khi lưu dữ liệu!", "danger");
+    }
+}
 
 function showToast(message, type = 'success') {
     const toastContainer = document.getElementById('toast-container');
@@ -452,60 +492,64 @@ function toggleAccountStatus(index, event) {
 }
 
 function render(dataToRender = data) {
-    const serverTables = document.getElementById("serverTables"); serverTables.innerHTML = "";
-    const existingServers = [...new Set(data.map(item => item.server))];
-    document.getElementById('server-list').innerHTML = existingServers.map(s => `<option value="${s}"></option>`).join('');
-    const grouped = dataToRender.reduce((acc, item) => { (acc[item.server] = acc[item.server] || []).push(item); return acc; }, {});
-    if (Object.keys(grouped).length === 0) {
-        const searchTerm = document.getElementById('searchInput').value;
-        const emptyText = searchTerm ? `Không tìm thấy kết quả nào cho "<b>${searchTerm}</b>"` : `<div class="empty-state-icon"><i class="fa-solid fa-box-open"></i></div><div class="empty-state-text">Chưa có dữ liệu nào</div><div class="empty-state-subtext">Hãy thêm account đầu tiên của bạn</div>`;
-        serverTables.innerHTML = `<div class="empty-state">${emptyText}</div>`;
-    } else {
-        Object.keys(grouped).sort().forEach(server => {
-            const sortBtn = document.getElementById('sortToggleBtn');
-            if (sortBtn) sortBtn.innerHTML = (sortOrder === 'diamonds') ? '<i class="fa-solid fa-clock"></i> Sắp xếp theo Thời gian' : '<i class="fa-regular fa-gem"></i> Sắp xếp theo Kim cương';
-            if (sortOrder === 'diamonds') { grouped[server].sort((a, b) => b.current - a.current); } else { grouped[server].sort((a, b) => (new Date(b.history[0]?.timestamp || 0)) - (new Date(a.history[0]?.timestamp || 0))); }
-            const rows = grouped[server].map(item => {
-                const originalIndex = data.findIndex(x => x.account === item.account && x.server === item.server);
-                const { income, expense } = calculateIncomeExpense(item.history, item.performanceResetTimestamp);
-                const lastUpdatedTimestamp = item.history && item.history.length > 0 ? item.history[0].timestamp : null;
-                const locationDisplay = item.location ? item.location : `<span class="placeholder">Nhấp để thêm</span>`;
-                const isChecked = item.status === 'on' ? 'checked' : '';
-                const rowStyle = '';
-
-                return `
-                    <tr class="fade-in" style="${rowStyle}">
-                        <td class="account-name">${item.account}</td>
-                        <td class="diamond-count" onclick="makeEditable(this, ${originalIndex})"><span>${item.current.toLocaleString()}</span></td>
-                        <td class="income-expense change-positive">${income > 0 ? `+${income.toLocaleString()}` : '--'}</td>
-                        <td class="income-expense change-negative">${expense > 0 ? `-${expense.toLocaleString()}` : '--'}</td>
-                        <td class="relative-time" data-timestamp="${lastUpdatedTimestamp || ''}">${formatRelativeTime(lastUpdatedTimestamp)}</td>
-                        <td class="location-cell" onclick="makeLocationEditable(this, ${originalIndex})">${locationDisplay}</td>
-                        <td>
-                            <div class="action-buttons">
-                                <label class="toggle-switch" title="Chuyển trạng thái ON/OFF">
-                                    <input type="checkbox" onchange="toggleAccountStatus(${originalIndex}, event)" ${isChecked}>
-                                    <span class="slider"></span>
-                                </label>
-                                <button class="btn-small btn-check" onclick="manualUpdateTimestamp(${originalIndex})" title="Check thủ công"><i class="fa-solid fa-check"></i></button>
-                                <button class="btn-small btn-sync" onclick="resetIncomeExpense(${originalIndex})" title="Reset Thu/Chi"><i class="fa-solid fa-sync-alt"></i></button>
-                                <button class="btn-small btn-history" onclick="showHistory(${originalIndex})" title="Xem lịch sử"><i class="fa-solid fa-history"></i></button>
-                                <button class="btn-small btn-edit" onclick="edit(${originalIndex})" title="Chỉnh sửa"><i class="fa-solid fa-pencil"></i></button>
-                                <button class="btn-small btn-delete" onclick="del(${originalIndex})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>`;
-            }).join("");
-            const total = grouped[server].reduce((sum, item) => sum + item.current, 0);
-            serverTables.innerHTML += `
-                <div class="server-section fade-in">
-                    <div class="server-header">
-                        <span><i class="fa-solid fa-server"></i> Server: ${server} (${grouped[server].length} acc)</span>
-                        <div class="server-stats" onclick="showServerStats('${server}')" title="Xem thống kê hàng ngày của server">${total.toLocaleString()} KC</div>
-                    </div>
-                    <table><thead><tr><th>Account</th><th>Kim cương</th><th>Tổng Thu</th><th>Tổng Chi</th><th>Cập nhật</th><th>Vị trí</th><th>Hành động</th></tr></thead><tbody>${rows}</tbody></table>
-                </div>`;
-        });
+    try {
+        const serverTables = document.getElementById("serverTables"); serverTables.innerHTML = "";
+        const existingServers = [...new Set(data.map(item => item.server))];
+        document.getElementById('server-list').innerHTML = existingServers.map(s => `<option value="${s}"></option>`).join('');
+        const grouped = dataToRender.reduce((acc, item) => { (acc[item.server] = acc[item.server] || []).push(item); return acc; }, {});
+        if (Object.keys(grouped).length === 0) {
+            const searchTerm = document.getElementById('searchInput').value;
+            const emptyText = searchTerm ? `Không tìm thấy kết quả nào cho "<b>${searchTerm}</b>"` : `<div class="empty-state-icon"><i class="fa-solid fa-box-open"></i></div><div class="empty-state-text">Chưa có dữ liệu nào</div><div class="empty-state-subtext">Hãy thêm account đầu tiên của bạn</div>`;
+            serverTables.innerHTML = `<div class="empty-state">${emptyText}</div>`;
+        } else {
+            Object.keys(grouped).sort().forEach(server => {
+                const sortBtn = document.getElementById('sortToggleBtn');
+                if (sortBtn) sortBtn.innerHTML = (sortOrder === 'diamonds') ? '<i class="fa-solid fa-clock"></i> Sắp xếp theo Thời gian' : '<i class="fa-regular fa-gem"></i> Sắp xếp theo Kim cương';
+                if (sortOrder === 'diamonds') { grouped[server].sort((a, b) => b.current - a.current); } else { grouped[server].sort((a, b) => (new Date(b.history[0]?.timestamp || 0)) - (new Date(a.history[0]?.timestamp || 0))); }
+                const rows = grouped[server].map(item => {
+                    const originalIndex = data.findIndex(x => x.account === item.account && x.server === item.server);
+                    const { income, expense } = calculateIncomeExpense(item.history, item.performanceResetTimestamp);
+                    const lastUpdatedTimestamp = item.history && item.history.length > 0 ? item.history[0].timestamp : null;
+                    const locationDisplay = item.location ? item.location : `<span class="placeholder">Nhấp để thêm</span>`;
+                    const isChecked = item.status === 'on' ? 'checked' : '';
+                    
+                    return `
+                        <tr class="fade-in">
+                            <td class="account-name clickable" onclick="showAccountNotesModal(${originalIndex})" title="Xem/Sửa ghi chú">${item.account}</td>
+                            <td class="diamond-count" onclick="makeEditable(this, ${originalIndex})"><span>${item.current.toLocaleString()}</span></td>
+                            <td class="income-expense change-positive">${income > 0 ? `+${income.toLocaleString()}` : '--'}</td>
+                            <td class="income-expense change-negative">${expense > 0 ? `-${expense.toLocaleString()}` : '--'}</td>
+                            <td class="relative-time" data-timestamp="${lastUpdatedTimestamp || ''}">${formatRelativeTime(lastUpdatedTimestamp)}</td>
+                            <td class="location-cell" onclick="makeLocationEditable(this, ${originalIndex})">${locationDisplay}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <label class="toggle-switch" title="Chuyển trạng thái ON/OFF">
+                                        <input type="checkbox" onchange="toggleAccountStatus(${originalIndex}, event)" ${isChecked}>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <button class="btn-small btn-check" onclick="manualUpdateTimestamp(${originalIndex})" title="Check thủ công"><i class="fa-solid fa-check"></i></button>
+                                    <button class="btn-small btn-sync" onclick="resetIncomeExpense(${originalIndex})" title="Reset Thu/Chi"><i class="fa-solid fa-sync-alt"></i></button>
+                                    <button class="btn-small btn-history" onclick="showHistory(${originalIndex})" title="Xem lịch sử"><i class="fa-solid fa-history"></i></button>
+                                    <button class="btn-small btn-edit" onclick="edit(${originalIndex})" title="Chỉnh sửa"><i class="fa-solid fa-pencil"></i></button>
+                                    <button class="btn-small btn-delete" onclick="del(${originalIndex})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>`;
+                }).join("");
+                const total = grouped[server].reduce((sum, item) => sum + item.current, 0);
+                serverTables.innerHTML += `
+                    <div class="server-section fade-in">
+                        <div class="server-header">
+                            <span><i class="fa-solid fa-server"></i> Server: ${server} (${grouped[server].length} acc)</span>
+                            <div class="server-stats" onclick="showServerStats('${server}')" title="Xem thống kê hàng ngày của server">${total.toLocaleString()} KC</div>
+                        </div>
+                        <table><thead><tr><th>Account</th><th>Kim cương</th><th>Tổng Thu</th><th>Tổng Chi</th><th>Cập nhật</th><th>Vị trí</th><th>Hành động</th></tr></thead><tbody>${rows}</tbody></table>
+                    </div>`;
+            });
+        }
+    } catch (e) {
+        console.error("Lỗi nghiêm trọng khi render giao diện:", e);
+        document.body.innerHTML = `<div style="text-align: center; padding: 50px; color: red;"><h1>Lỗi nghiêm trọng</h1><p>Đã xảy ra lỗi khi hiển thị dữ liệu. Vui lòng kiểm tra Console (F12) để biết chi tiết. Thử xóa dữ liệu cũ nếu cần thiết.</p></div>`;
     }
 }
 
@@ -531,7 +575,7 @@ function addOrUpdate() {
         if (isNaN(current) || current < 0) { showToast("Kim cương khởi tạo không hợp lệ!", "danger"); return; }
         const isDuplicate = data.some(item => item.account === account && item.server === server);
         if (isDuplicate) { showToast(`Account "${account}" đã tồn tại trên server "${server}".`, "danger"); return; }
-        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null, location: '', status: 'on' };
+        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null, location: '', status: 'on', notes: [] };
         data.push(newItem);
         addHistoryEntry(data.length - 1, current, 'Khởi tạo tài khoản');
     }
@@ -708,14 +752,19 @@ function showHistory(index) {
     const tableBody = document.getElementById('historyTableBody'); tableBody.innerHTML = '';
     if (!item.history || item.history.length === 0) { tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Chưa có lịch sử giao dịch.</td></tr>'; } 
     else {
-        item.history.forEach(entry => {
+        item.history.forEach((entry, historyIndex) => {
             const change = entry.newBalance - entry.oldBalance;
             let changeHTML;
             if (entry.type === 'check') changeHTML = `<span>--</span>`;
             else if (entry.type === 'set' && entry.oldBalance === 0) changeHTML = `<span class="change-positive">+${entry.newBalance.toLocaleString()}</span>`;
             else changeHTML = (change > 0) ? `<span class="change-positive">+${change.toLocaleString()}</span>` : `<span class="change-negative">${change.toLocaleString()}</span>`;
             const rowClass = entry.type === 'check' ? 'type-check' : '';
-            tableBody.innerHTML += `<tr class="${rowClass}"><td>${new Date(entry.timestamp).toLocaleString('vi-VN')}</td><td>${changeHTML}</td><td class="note-col">${entry.note}</td><td>${entry.newBalance.toLocaleString()}</td></tr>`;
+            tableBody.innerHTML += `<tr class="${rowClass}">
+                <td>${new Date(entry.timestamp).toLocaleString('vi-VN')}</td>
+                <td>${changeHTML}</td>
+                <td class="note-col editable" onclick="makeHistoryNoteEditable(this, ${index}, ${historyIndex})">${entry.note}</td>
+                <td>${entry.newBalance.toLocaleString()}</td>
+            </tr>`;
         });
     }
     modal.classList.add('active');
@@ -728,32 +777,157 @@ function closeNoteModal() {
     render();
 }
 function closeServerStatsModal() { document.getElementById('serverStatsModal').classList.remove('active'); }
+function closeAccountNotesModal() { document.getElementById('accountNotesModal').classList.remove('active'); _accountNotesModalState = {}; }
 
-// === HÀM THỐNG KÊ SERVER (ĐÃ CẬP NHẬT) ===
+function makeHistoryNoteEditable(tdElement, accountIndex, historyIndex) {
+    if (tdElement.querySelector('input')) return;
+    const originalValue = data[accountIndex].history[historyIndex].note;
+    tdElement.innerHTML = `<input type="text" value="${originalValue}" />`;
+    const input = tdElement.querySelector('input');
+    input.focus();
+    input.select();
+    input.onclick = (e) => e.stopPropagation();
+    input.onblur = () => saveHistoryNoteEdit(input, accountIndex, historyIndex);
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') e.target.blur();
+        else if (e.key === 'Escape') {
+            tdElement.innerHTML = originalValue;
+        }
+    };
+}
+
+function saveHistoryNoteEdit(input, accountIndex, historyIndex) {
+    if (!document.body.contains(input)) return;
+    const newValue = input.value.trim();
+    data[accountIndex].history[historyIndex].note = newValue;
+    save();
+    input.parentElement.innerHTML = newValue;
+    showToast('Đã cập nhật ghi chú giao dịch!', 'success');
+}
+
+function showAccountNotesModal(accountIndex) {
+    _accountNotesModalState = { index: accountIndex };
+    const item = data[accountIndex];
+    const modal = document.getElementById('accountNotesModal');
+    document.getElementById('accountNotesModalTitle').textContent = `Ghi chú cho: ${item.account} (${item.server})`;
+    document.getElementById('newNoteInput').value = '';
+    renderAccountNotes();
+    modal.classList.add('active');
+}
+
+function renderAccountNotes() {
+    const { index } = _accountNotesModalState;
+    if (index === undefined) return;
+    const item = data[index];
+    if (!item) return; 
+    const listElement = document.getElementById('notesList');
+    listElement.innerHTML = '';
+    
+    if (!item.notes || item.notes.length === 0) {
+        listElement.innerHTML = '<li style="justify-content: center; color: #888;">Chưa có ghi chú nào.</li>';
+        return;
+    }
+
+    item.notes.forEach((note, noteIndex) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <div class="note-content">
+                <span class="note-text" onclick="makeAccountNoteEditable(this, ${noteIndex})">${note.text.replace(/\n/g, '<br>')}</span>
+                <span class="note-timestamp">${new Date(note.timestamp).toLocaleString('vi-VN')}</span>
+            </div>
+            <div class="note-actions">
+                <button class="btn-small btn-delete" onclick="deleteAccountNote(event, ${noteIndex})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `;
+        listElement.appendChild(li);
+    });
+}
+
+function addNewAccountNote() {
+    const { index } = _accountNotesModalState;
+    const input = document.getElementById('newNoteInput');
+    const text = input.value.trim();
+    if (!text) {
+        showToast('Vui lòng nhập nội dung ghi chú!', 'danger');
+        return;
+    }
+    data[index].notes.unshift({ text: text, timestamp: new Date().toISOString() });
+    save();
+    input.value = '';
+    renderAccountNotes();
+}
+
+function deleteAccountNote(event, noteIndex) {
+    event.stopPropagation();
+    if (confirm('Bạn có chắc muốn xóa ghi chú này không?')) {
+        const { index } = _accountNotesModalState;
+        data[index].notes.splice(noteIndex, 1);
+        save();
+        renderAccountNotes();
+        showToast('Đã xóa ghi chú!', 'danger');
+    }
+}
+
+function makeAccountNoteEditable(spanElement, noteIndex) {
+    const li = spanElement.closest('li');
+    if (li.querySelector('textarea')) return;
+    
+    const { index: accountIndex } = _accountNotesModalState;
+    const originalText = data[accountIndex].notes[noteIndex].text;
+    const noteContentDiv = spanElement.parentElement;
+    
+    const textarea = document.createElement('textarea');
+    textarea.value = originalText;
+    textarea.rows = Math.max(3, (originalText.match(/\n/g) || []).length + 1);
+
+    spanElement.style.display = 'none'; // Ẩn span đi
+    noteContentDiv.prepend(textarea); // Thêm textarea vào trước
+    textarea.focus();
+    
+    textarea.onblur = () => saveAccountNoteEdit(textarea, noteIndex);
+    textarea.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            textarea.blur();
+        } else if (e.key === 'Escape') {
+            renderAccountNotes(); // Cách đơn giản nhất để hủy là render lại
+        }
+    };
+}
+
+function saveAccountNoteEdit(textarea, noteIndex) {
+    const { index: accountIndex } = _accountNotesModalState;
+    const newText = textarea.value; // Giữ lại khoảng trắng và xuống dòng
+    
+    if (newText.trim() === data[accountIndex].notes[noteIndex].text.trim()) {
+        renderAccountNotes(); // Nếu không có thay đổi đáng kể, chỉ cần render lại để hủy
+        return;
+    }
+    
+    data[accountIndex].notes[noteIndex].text = newText;
+    data[accountIndex].notes[noteIndex].timestamp = new Date().toISOString();
+    save();
+    showToast('Đã cập nhật ghi chú!', 'success');
+    renderAccountNotes(); // Render lại toàn bộ list để đảm bảo nhất quán
+}
+
 function showServerStats(serverName) {
     const modal = document.getElementById('serverStatsModal');
     const modalTitle = document.getElementById('serverStatsModalTitle');
     const modalBody = document.getElementById('serverStatsBody');
-    
     modalTitle.textContent = `Thống kê hàng ngày: Server ${serverName}`;
     modalBody.innerHTML = 'Đang tính toán...';
-
     const accountsOnServer = data.filter(item => item.server === serverName);
     const dailyStats = {};
-
     accountsOnServer.forEach(account => {
         if (account.history) {
             account.history.forEach(entry => {
                 if (entry.oldBalance === entry.newBalance || entry.type === 'check') return;
-
                 const dateKey = new Date(entry.timestamp).toISOString().slice(0, 10);
                 if (!dailyStats[dateKey]) {
-                    // Thêm thuộc tính balance
                     dailyStats[dateKey] = { income: 0, expense: 0, balance: 0 };
                 }
                 const change = entry.newBalance - entry.oldBalance;
-                
-                // Cập nhật cả ba giá trị
                 dailyStats[dateKey].balance += change;
                 if (change > 0) {
                     dailyStats[dateKey].income += change;
@@ -763,20 +937,15 @@ function showServerStats(serverName) {
             });
         }
     });
-
     const sortedDates = Object.keys(dailyStats).sort().reverse();
-
     if (sortedDates.length === 0) {
         modalBody.innerHTML = '<p style="text-align: center; color: #666;">Không có dữ liệu giao dịch cho server này.</p>';
     } else {
-        // Thêm cột "Số dư cuối" vào header
         let tableHTML = '<table class="history-table"><thead><tr><th>Ngày</th><th>Tổng Thu</th><th>Tổng Chi</th><th>Số dư cuối</th></tr></thead><tbody>';
         sortedDates.forEach(dateKey => {
             const stats = dailyStats[dateKey];
             const [year, month, day] = dateKey.split('-');
             const formattedDate = `${day}/${month}/${year}`;
-            
-            // Chuẩn bị HTML cho cột số dư
             const balance = stats.balance;
             let balanceHTML;
             if (balance > 0) {
@@ -786,21 +955,11 @@ function showServerStats(serverName) {
             } else {
                 balanceHTML = `<td>0</td>`;
             }
-
-            // Thêm hàng vào bảng, bao gồm cả cột số dư
-            tableHTML += `
-                <tr>
-                    <td>${formattedDate}</td>
-                    <td class="change-positive">+${stats.income.toLocaleString()}</td>
-                    <td class="change-negative">-${stats.expense.toLocaleString()}</td>
-                    ${balanceHTML}
-                </tr>
-            `;
+            tableHTML += `<tr><td>${formattedDate}</td><td class="change-positive">+${stats.income.toLocaleString()}</td><td class="change-negative">-${stats.expense.toLocaleString()}</td>${balanceHTML}</tr>`;
         });
         tableHTML += '</tbody></table>';
         modalBody.innerHTML = tableHTML;
     }
-
     modal.classList.add('active');
 }
 
@@ -825,11 +984,14 @@ function handleFileImport(event) {
     reader.onload = function (e) {
         try {
             const importedData = JSON.parse(e.target.result);
-            if (!Array.isArray(importedData) || !importedData.every(item => 'account' in item && 'server' in item && 'current' in item)) {
-                throw new Error("File không đúng định dạng hoặc thiếu dữ liệu.");
+            if (!Array.isArray(importedData)) {
+                throw new Error("File không đúng định dạng.");
             }
             if (confirm("Nhập dữ liệu sẽ GHI ĐÈ toàn bộ dữ liệu hiện tại. Bạn có chắc chắn?")) {
-                data = importedData; migrateData(); save(); render();
+                const { migratedData } = migrateData(importedData);
+                data = migratedData;
+                save();
+                render();
                 showToast("Nhập dữ liệu thành công!", "success");
             }
         } catch (error) { showToast("Lỗi khi đọc file: " + error.message, "danger");
@@ -842,12 +1004,15 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
         const noteModalActive = document.getElementById('noteModal').classList.contains('active');
         const formInputActive = document.activeElement.closest('.form-section');
+        const newAccountNoteActive = document.activeElement.id === 'newNoteInput';
         if (noteModalActive) { e.preventDefault(); confirmNoteChange(); } 
         else if (formInputActive) { e.preventDefault(); addOrUpdate(); }
+        else if (newAccountNoteActive && !e.shiftKey) { e.preventDefault(); addNewAccountNote(); }
     } else if (e.key === 'Escape') {
         if (document.getElementById('noteModal').classList.contains('active')) closeNoteModal();
         if (document.getElementById('historyModal').classList.contains('active')) closeHistoryModal();
         if (document.getElementById('serverStatsModal').classList.contains('active')) closeServerStatsModal();
+        if (document.getElementById('accountNotesModal').classList.contains('active')) closeAccountNotesModal();
     }
 });
 
@@ -855,9 +1020,11 @@ window.onclick = function (event) {
     const historyModal = document.getElementById('historyModal');
     const noteModal = document.getElementById('noteModal');
     const serverStatsModal = document.getElementById('serverStatsModal');
+    const accountNotesModal = document.getElementById('accountNotesModal');
     if (event.target == historyModal) closeHistoryModal();
     if (event.target == noteModal) closeNoteModal();
     if (event.target == serverStatsModal) closeServerStatsModal();
+    if (event.target == accountNotesModal) closeAccountNotesModal();
 }
 
 function updateRelativeTimes() {
@@ -867,12 +1034,32 @@ function updateRelativeTimes() {
     });
 }
 
-// Khởi chạy ứng dụng
-migrateData();
-render();
-clearForm();
-updateLocationSuggestions();
-setInterval(updateRelativeTimes, 30000);
+function initializeApp() {
+    let loadedData = [];
+    try {
+        const rawData = localStorage.getItem("kimcuong_data_v3");
+        if (rawData) {
+            loadedData = JSON.parse(rawData);
+        }
+    } catch(e) {
+        console.error("Lỗi khi parse dữ liệu từ localStorage:", e);
+        loadedData = [];
+    }
+    
+    const { migratedData, needsSave } = migrateData(loadedData);
+    data = migratedData;
+    if (needsSave) {
+        save();
+    }
+    
+    render();
+    clearForm();
+    updateLocationSuggestions();
+    setInterval(updateRelativeTimes, 30000);
+}
+
+initializeApp();
+
 </script>
 
 </body>
