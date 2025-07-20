@@ -132,10 +132,39 @@
     min-width: 120px; max-width: 200px; word-break: break-word;
  }
  .location-cell .placeholder { opacity: 0.6; }
- .location-cell input {
+ .location-edit-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative;
+ }
+ .location-edit-container input {
     width: 100%; padding: 6px; font-size: 0.95rem; font-style: normal;
     text-align: center; border: 1px solid var(--info-color);
     border-radius: 5px; background: #f0f8ff;
+ }
+
+ #customLocationDropdown {
+    display: none;
+    position: absolute;
+    z-index: 1001;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-height: 200px;
+    overflow-y: auto;
+ }
+ #customLocationDropdown.show {
+    display: block;
+ }
+ #customLocationDropdown div {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+ }
+ #customLocationDropdown div:hover {
+    background-color: var(--light-gray);
  }
 
  .action-buttons { display: flex; gap: 8px; justify-content: center; align-items: center; }
@@ -319,7 +348,7 @@
  </style>
 </head>
 <body>
-<datalist id="location-suggestions"></datalist>
+<div id="customLocationDropdown"></div>
 
 <div class="container">
     <div class="header">
@@ -393,24 +422,20 @@ function migrateData(loadedData) {
     }
     loadedData.forEach(item => {
         if (!item.hasOwnProperty('history')) {
-            item.history = [];
-            needsSave = true;
+            item.history = []; needsSave = true;
         }
         if (!item.hasOwnProperty('performanceResetTimestamp')) {
-            item.performanceResetTimestamp = null;
-            needsSave = true;
+            item.performanceResetTimestamp = null; needsSave = true;
         }
-        if (!item.hasOwnProperty('location')) {
-            item.location = '';
+        if (typeof item.location === 'string' || item.location === undefined || item.location === null) {
+            item.location = { primary: item.location || '', secondary: '' };
             needsSave = true;
         }
         if (!item.hasOwnProperty('status')) {
-            item.status = 'on';
-            needsSave = true;
+            item.status = 'on'; needsSave = true;
         }
         if (!item.hasOwnProperty('notes')) {
-            item.notes = [];
-            needsSave = true;
+            item.notes = []; needsSave = true;
         }
     });
     return { migratedData: loadedData, needsSave };
@@ -510,7 +535,18 @@ function render(dataToRender = data) {
                     const originalIndex = data.findIndex(x => x.account === item.account && x.server === item.server);
                     const { income, expense } = calculateIncomeExpense(item.history, item.performanceResetTimestamp);
                     const lastUpdatedTimestamp = item.history && item.history.length > 0 ? item.history[0].timestamp : null;
-                    const locationDisplay = item.location ? item.location : `<span class="placeholder">Nhấp để thêm</span>`;
+                    
+                    let locationDisplay = '';
+                    const loc = item.location;
+                    if (loc && (loc.primary || loc.secondary)) {
+                        locationDisplay = loc.primary;
+                        if (loc.secondary) {
+                            locationDisplay += ` / ${loc.secondary}`;
+                        }
+                    } else {
+                        locationDisplay = `<span class="placeholder">Nhấp để thêm</span>`;
+                    }
+                    
                     const isChecked = item.status === 'on' ? 'checked' : '';
                     
                     return `
@@ -575,7 +611,7 @@ function addOrUpdate() {
         if (isNaN(current) || current < 0) { showToast("Kim cương khởi tạo không hợp lệ!", "danger"); return; }
         const isDuplicate = data.some(item => item.account === account && item.server === server);
         if (isDuplicate) { showToast(`Account "${account}" đã tồn tại trên server "${server}".`, "danger"); return; }
-        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null, location: '', status: 'on', notes: [] };
+        const newItem = { account, server, current: 0, history: [], performanceResetTimestamp: null, location: {primary: '', secondary: ''}, status: 'on', notes: [] };
         data.push(newItem);
         addHistoryEntry(data.length - 1, current, 'Khởi tạo tài khoản');
     }
@@ -628,7 +664,8 @@ function handleSearch() {
     const filteredData = data.filter(item =>
         item.account.toLowerCase().includes(searchTerm) ||
         item.server.toLowerCase().includes(searchTerm) ||
-        (item.location && item.location.toLowerCase().includes(searchTerm))
+        (item.location?.primary && item.location.primary.toLowerCase().includes(searchTerm)) ||
+        (item.location?.secondary && item.location.secondary.toLowerCase().includes(searchTerm))
     );
     render(filteredData);
 }
@@ -669,35 +706,87 @@ function saveDirectEdit(input, index) {
     noteInput.focus(); noteInput.select();
 }
 
-function updateLocationSuggestions() {
-    const locations = [...new Set(data.map(item => item.location).filter(Boolean))];
-    const datalist = document.getElementById('location-suggestions');
-    datalist.innerHTML = locations.map(loc => `<option value="${loc}"></option>`).join('');
-}
-
 function makeLocationEditable(tdElement, index) {
-    if (tdElement.querySelector('input')) return;
-    const originalValue = data[index].location || '';
-    tdElement.innerHTML = `<input type="text" value="${originalValue}" placeholder="Nhập vị trí..." list="location-suggestions" />`;
-    const input = tdElement.querySelector('input');
-    input.focus(); input.select();
-    input.onblur = () => saveLocationEdit(input, index);
-    input.onkeydown = (e) => {
-        if (e.key === 'Enter') e.target.blur();
-        else if (e.key === 'Escape') render();
+    if (tdElement.querySelector('.location-edit-container')) return;
+    const originalLocation = data[index].location;
+    tdElement.innerHTML = `
+        <div class="location-edit-container">
+            <input type="text" placeholder="Vị trí chính" value="${originalLocation.primary}" onclick="showLocationDropdown(event)">
+            <input type="text" placeholder="Vị trí phụ" value="${originalLocation.secondary}" onclick="showLocationDropdown(event)">
+        </div>`;
+    
+    const container = tdElement.querySelector('.location-edit-container');
+    const inputs = tdElement.querySelectorAll('input');
+    inputs[0].focus();
+    
+    const saveAndRender = () => {
+        if (document.body.contains(container)) {
+            const newPrimary = inputs[0].value.trim();
+            const newSecondary = inputs[1].value.trim();
+            if (newPrimary !== originalLocation.primary || newSecondary !== originalLocation.secondary) {
+                data[index].location = { primary: newPrimary, secondary: newSecondary };
+                save();
+                showToast(`Đã cập nhật vị trí cho ${data[index].account}`, 'info');
+            }
+            render();
+        }
     };
+    
+    container.addEventListener('focusout', (e) => {
+        if (!container.contains(e.relatedTarget) && !document.getElementById('customLocationDropdown').contains(e.relatedTarget)) {
+            saveAndRender();
+        }
+    });
+
+    inputs.forEach(input => {
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveAndRender();
+            } else if (e.key === 'Escape') {
+                render();
+            }
+        };
+    });
 }
 
-function saveLocationEdit(input, index) {
-    if (!document.body.contains(input)) return;
-    const newLocation = input.value.trim();
-    const item = data[index];
-    if (newLocation === (item.location || '')) { render(); return; }
-    item.location = newLocation;
-    save();
-    updateLocationSuggestions();
-    showToast(`Đã cập nhật vị trí cho ${item.account}`, 'info');
-    render();
+function showLocationDropdown(event) {
+    event.stopPropagation();
+    const targetInput = event.target;
+    const dropdown = document.getElementById('customLocationDropdown');
+    
+    // === DÒNG SỬA LỖI QUAN TRỌNG ===
+    dropdown.onmousedown = (e) => e.preventDefault();
+
+    const locations = new Set();
+    data.forEach(item => {
+        if (item.location?.primary) locations.add(item.location.primary);
+        if (item.location?.secondary) locations.add(item.location.secondary);
+    });
+
+    if (locations.size === 0) return;
+
+    dropdown.innerHTML = '';
+    [...locations].sort().forEach(loc => {
+        const option = document.createElement('div');
+        option.textContent = loc;
+        option.onclick = () => {
+            targetInput.value = loc;
+            hideLocationDropdown();
+            targetInput.focus();
+        };
+        dropdown.appendChild(option);
+    });
+    
+    const inputRect = targetInput.getBoundingClientRect();
+    dropdown.style.left = `${inputRect.left + window.scrollX}px`;
+    dropdown.style.top = `${inputRect.bottom + window.scrollY}px`;
+    dropdown.style.width = `${inputRect.width}px`;
+    dropdown.classList.add('show');
+}
+
+function hideLocationDropdown() {
+    document.getElementById('customLocationDropdown').classList.remove('show');
 }
 
 function showAltNoteOptions() {
@@ -880,35 +969,31 @@ function makeAccountNoteEditable(spanElement, noteIndex) {
     textarea.value = originalText;
     textarea.rows = Math.max(3, (originalText.match(/\n/g) || []).length + 1);
 
-    spanElement.style.display = 'none'; // Ẩn span đi
-    noteContentDiv.prepend(textarea); // Thêm textarea vào trước
+    spanElement.style.display = 'none';
+    noteContentDiv.prepend(textarea);
     textarea.focus();
     
-    textarea.onblur = () => saveAccountNoteEdit(textarea, noteIndex);
-    textarea.onkeydown = (e) => {
+    const saveChanges = () => {
+        const newText = textarea.value;
+        if (newText.trim() !== originalText.trim()) {
+            data[accountIndex].notes[noteIndex].text = newText;
+            data[accountIndex].notes[noteIndex].timestamp = new Date().toISOString();
+            save();
+            showToast('Đã cập nhật ghi chú!', 'success');
+        }
+        renderAccountNotes();
+    };
+
+    textarea.addEventListener('blur', saveChanges);
+    textarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             textarea.blur();
         } else if (e.key === 'Escape') {
-            renderAccountNotes(); // Cách đơn giản nhất để hủy là render lại
+            textarea.removeEventListener('blur', saveChanges);
+            renderAccountNotes();
         }
-    };
-}
-
-function saveAccountNoteEdit(textarea, noteIndex) {
-    const { index: accountIndex } = _accountNotesModalState;
-    const newText = textarea.value; // Giữ lại khoảng trắng và xuống dòng
-    
-    if (newText.trim() === data[accountIndex].notes[noteIndex].text.trim()) {
-        renderAccountNotes(); // Nếu không có thay đổi đáng kể, chỉ cần render lại để hủy
-        return;
-    }
-    
-    data[accountIndex].notes[noteIndex].text = newText;
-    data[accountIndex].notes[noteIndex].timestamp = new Date().toISOString();
-    save();
-    showToast('Đã cập nhật ghi chú!', 'success');
-    renderAccountNotes(); // Render lại toàn bộ list để đảm bảo nhất quán
+    });
 }
 
 function showServerStats(serverName) {
@@ -1017,6 +1102,11 @@ document.addEventListener('keydown', function (e) {
 });
 
 window.onclick = function (event) {
+    const dropdown = document.getElementById('customLocationDropdown');
+    if (dropdown.classList.contains('show') && !event.target.closest('.location-edit-container') && event.target !== dropdown) {
+        hideLocationDropdown();
+    }
+
     const historyModal = document.getElementById('historyModal');
     const noteModal = document.getElementById('noteModal');
     const serverStatsModal = document.getElementById('serverStatsModal');
@@ -1054,7 +1144,6 @@ function initializeApp() {
     
     render();
     clearForm();
-    updateLocationSuggestions();
     setInterval(updateRelativeTimes, 30000);
 }
 
