@@ -127,23 +127,23 @@
  .change-positive { color: var(--success-color); }
  .change-negative { color: var(--danger-color); }
 
- .location-cell {
-    cursor: pointer; font-style: italic; color: #555;
-    min-width: 120px; max-width: 200px; word-break: break-word;
+ /* === CSS CHO VỊ TRÍ (ĐÃ CẬP NHẬT) === */
+ .location-cell { 
+    min-width: 120px; max-width: 200px; word-break: break-word; color: #555;
  }
- .location-cell .placeholder { opacity: 0.6; }
- .location-edit-container {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    position: relative;
+ .location-primary, .location-secondary {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
  }
- .location-edit-container input {
-    width: 100%; padding: 6px; font-size: 0.95rem; font-style: normal;
-    text-align: center; border: 1px solid var(--info-color);
-    border-radius: 5px; background: #f0f8ff;
+ .location-primary:hover, .location-secondary:hover {
+    background-color: #f0f8ff;
+    text-decoration: underline;
  }
+ .location-cell .placeholder { opacity: 0.6; font-style: italic; }
 
+ /* === CSS CHO DROPDOWN VỊ TRÍ (ĐÃ CẬP NHẬT) === */
  #customLocationDropdown {
     display: none;
     position: absolute;
@@ -152,19 +152,52 @@
     border: 1px solid #ccc;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    max-height: 200px;
+    min-width: 200px;
+    overflow: hidden; /* Bỏ overflow-y, để list tự scroll */
+ }
+ #customLocationDropdown.show { display: block; }
+ .location-dropdown-header {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    background-color: #f8f9fa;
+ }
+ .location-dropdown-header input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+ }
+ .location-dropdown-list {
+    max-height: 180px;
     overflow-y: auto;
+    padding: 0; margin: 0;
+    list-style: none;
  }
- #customLocationDropdown.show {
-    display: block;
- }
- #customLocationDropdown div {
+ .location-dropdown-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 8px 12px;
     cursor: pointer;
     font-size: 0.9rem;
  }
- #customLocationDropdown div:hover {
-    background-color: var(--light-gray);
+ .location-dropdown-list li:hover { background-color: var(--light-gray); }
+ .location-dropdown-list .delete-suggestion-btn {
+    color: var(--danger-color);
+    padding: 4px;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    line-height: 1;
+    margin-left: 10px;
+ }
+ .location-dropdown-list .delete-suggestion-btn:hover { background-color: #ffeded; }
+ .location-dropdown-list .empty-list {
+    padding: 15px;
+    text-align: center;
+    color: #888;
+    font-style: italic;
  }
 
  .action-buttons { display: flex; gap: 8px; justify-content: center; align-items: center; }
@@ -536,16 +569,15 @@ function render(dataToRender = data) {
                     const { income, expense } = calculateIncomeExpense(item.history, item.performanceResetTimestamp);
                     const lastUpdatedTimestamp = item.history && item.history.length > 0 ? item.history[0].timestamp : null;
                     
-                    let locationDisplay = '';
-                    const loc = item.location;
-                    if (loc && (loc.primary || loc.secondary)) {
-                        locationDisplay = loc.primary;
-                        if (loc.secondary) {
-                            locationDisplay += ` / ${loc.secondary}`;
-                        }
-                    } else {
-                        locationDisplay = `<span class="placeholder">Nhấp để thêm</span>`;
-                    }
+                    const loc = item.location || { primary: '', secondary: '' };
+                    const primaryLocationHTML = loc.primary ? loc.primary : '<span class="placeholder">Chính</span>';
+                    const secondaryLocationHTML = loc.secondary ? loc.secondary : (loc.primary ? '' : '<span class="placeholder">Phụ</span>');
+                    const separator = loc.primary && loc.secondary ? ' / ' : '';
+                    
+                    const locationDisplay = `
+                        <span class="location-primary" title="Chỉnh sửa vị trí chính">${primaryLocationHTML}</span>
+                        ${separator ? `<span class="location-separator">${separator}</span>` : ''}
+                        <span class="location-secondary" title="Chỉnh sửa vị trí phụ">${secondaryLocationHTML}</span>`;
                     
                     const isChecked = item.status === 'on' ? 'checked' : '';
                     
@@ -556,7 +588,7 @@ function render(dataToRender = data) {
                             <td class="income-expense change-positive">${income > 0 ? `+${income.toLocaleString()}` : '--'}</td>
                             <td class="income-expense change-negative">${expense > 0 ? `-${expense.toLocaleString()}` : '--'}</td>
                             <td class="relative-time" data-timestamp="${lastUpdatedTimestamp || ''}">${formatRelativeTime(lastUpdatedTimestamp)}</td>
-                            <td class="location-cell" onclick="makeLocationEditable(this, ${originalIndex})">${locationDisplay}</td>
+                            <td class="location-cell" onclick="showLocationDropdown(event, ${originalIndex})">${locationDisplay}</td>
                             <td>
                                 <div class="action-buttons">
                                     <label class="toggle-switch" title="Chuyển trạng thái ON/OFF">
@@ -706,88 +738,134 @@ function saveDirectEdit(input, index) {
     noteInput.focus(); noteInput.select();
 }
 
-function makeLocationEditable(tdElement, index) {
-    if (tdElement.querySelector('.location-edit-container')) return;
-    const originalLocation = data[index].location;
-    tdElement.innerHTML = `
-        <div class="location-edit-container">
-            <input type="text" placeholder="Vị trí chính" value="${originalLocation.primary}" onclick="showLocationDropdown(event)">
-            <input type="text" placeholder="Vị trí phụ" value="${originalLocation.secondary}" onclick="showLocationDropdown(event)">
-        </div>`;
+// === KHU VỰC LOGIC VỊ TRÍ ĐÃ ĐƯỢC THAY THẾ HOÀN TOÀN ===
+
+/**
+ * Hiển thị dropdown quản lý vị trí "tất cả trong một".
+ */
+function showLocationDropdown(event, accountIndex) {
+    event.stopPropagation();
+    const target = event.target;
+    const dropdown = document.getElementById('customLocationDropdown');
     
-    const container = tdElement.querySelector('.location-edit-container');
-    const inputs = tdElement.querySelectorAll('input');
-    inputs[0].focus();
+    // Xác định loại vị trí (primary/secondary) dựa trên class của phần tử được click
+    let locationType = '';
+    if (target.classList.contains('location-primary')) {
+        locationType = 'primary';
+    } else if (target.classList.contains('location-secondary')) {
+        locationType = 'secondary';
+    } else {
+        // Nếu click vào dấu phân cách hoặc vùng trống, không làm gì cả
+        return;
+    }
+
+    // Thu thập các vị trí đã có, dựa trên loại vị trí
+    const locations = new Set();
+    data.forEach(item => {
+        const loc = item.location?.[locationType];
+        if (loc) locations.add(loc);
+    });
     
-    const saveAndRender = () => {
-        if (document.body.contains(container)) {
-            const newPrimary = inputs[0].value.trim();
-            const newSecondary = inputs[1].value.trim();
-            if (newPrimary !== originalLocation.primary || newSecondary !== originalLocation.secondary) {
-                data[index].location = { primary: newPrimary, secondary: newSecondary };
-                save();
-                showToast(`Đã cập nhật vị trí cho ${data[index].account}`, 'info');
+    // Tạo HTML cho dropdown
+    let listItemsHTML = '';
+    if (locations.size > 0) {
+        listItemsHTML = [...locations].sort().map(loc => `
+            <li data-location="${loc}">
+                <span class="location-text">${loc}</span>
+                <i class="fa-solid fa-times delete-suggestion-btn" data-location-to-delete="${loc}" title="Xóa '${loc}' khỏi tất cả tài khoản"></i>
+            </li>
+        `).join('');
+    } else {
+        listItemsHTML = '<li class="empty-list">Không có vị trí nào.</li>';
+    }
+
+    dropdown.innerHTML = `
+        <div class="location-dropdown-header">
+            <input type="text" id="newLocationInput" placeholder="Thêm vị trí mới và Enter..." />
+        </div>
+        <ul class="location-dropdown-list">
+            ${listItemsHTML}
+        </ul>
+    `;
+
+    // Định vị và hiển thị dropdown
+    const cellRect = target.closest('td').getBoundingClientRect();
+    dropdown.style.left = `${cellRect.left + window.scrollX}px`;
+    dropdown.style.top = `${cellRect.bottom + window.scrollY}px`;
+    dropdown.style.minWidth = `${cellRect.width}px`;
+    dropdown.classList.add('show');
+
+    // Gán sự kiện sau khi dropdown đã được thêm vào DOM
+    const newLocationInput = document.getElementById('newLocationInput');
+    newLocationInput.focus();
+    newLocationInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const newLocationValue = e.target.value.trim();
+            if (newLocationValue) {
+                addLocation(newLocationValue, locationType, accountIndex);
             }
-            render();
         }
     };
     
-    container.addEventListener('focusout', (e) => {
-        if (!container.contains(e.relatedTarget) && !document.getElementById('customLocationDropdown').contains(e.relatedTarget)) {
-            saveAndRender();
-        }
-    });
-
-    inputs.forEach(input => {
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                saveAndRender();
-            } else if (e.key === 'Escape') {
-                render();
-            }
+    dropdown.querySelectorAll('.location-dropdown-list li[data-location]').forEach(li => {
+        // Sự kiện chọn một vị trí
+        li.querySelector('.location-text').onclick = () => {
+            data[accountIndex].location[locationType] = li.dataset.location;
+            save();
+            render();
+            hideLocationDropdown();
+        };
+        // Sự kiện xóa một vị trí
+        li.querySelector('.delete-suggestion-btn').onclick = (e) => {
+            e.stopPropagation();
+            deleteSavedLocation(e.target.dataset.locationToDelete, locationType);
         };
     });
 }
 
-function showLocationDropdown(event) {
-    event.stopPropagation();
-    const targetInput = event.target;
-    const dropdown = document.getElementById('customLocationDropdown');
-    
-    // === DÒNG SỬA LỖI QUAN TRỌNG ===
-    dropdown.onmousedown = (e) => e.preventDefault();
+/**
+ * Thêm một vị trí mới và gán nó cho tài khoản hiện tại.
+ */
+function addLocation(newLocation, locationType, accountIndex) {
+    data[accountIndex].location[locationType] = newLocation;
+    save();
+    render();
+    hideLocationDropdown();
+    showToast(`Đã thêm và chọn vị trí mới: "${newLocation}"`, 'success');
+}
 
-    const locations = new Set();
-    data.forEach(item => {
-        if (item.location?.primary) locations.add(item.location.primary);
-        if (item.location?.secondary) locations.add(item.location.secondary);
-    });
 
-    if (locations.size === 0) return;
+/**
+ * Xóa một vị trí đã lưu khỏi TẤT CẢ các tài khoản.
+ */
+function deleteSavedLocation(locationToDelete, locationType) {
+    if (confirm(`Bạn có chắc muốn XOÁ vị trí "${locationToDelete}" khỏi TẤT CẢ các tài khoản không? Hành động này không thể hoàn tác.`)) {
+        let changedCount = 0;
+        data.forEach(item => {
+            if (item.location && item.location[locationType] === locationToDelete) {
+                item.location[locationType] = '';
+                changedCount++;
+            }
+        });
 
-    dropdown.innerHTML = '';
-    [...locations].sort().forEach(loc => {
-        const option = document.createElement('div');
-        option.textContent = loc;
-        option.onclick = () => {
-            targetInput.value = loc;
-            hideLocationDropdown();
-            targetInput.focus();
-        };
-        dropdown.appendChild(option);
-    });
-    
-    const inputRect = targetInput.getBoundingClientRect();
-    dropdown.style.left = `${inputRect.left + window.scrollX}px`;
-    dropdown.style.top = `${inputRect.bottom + window.scrollY}px`;
-    dropdown.style.width = `${inputRect.width}px`;
-    dropdown.classList.add('show');
+        if (changedCount > 0) {
+            save();
+            render(); 
+            showToast(`Đã xóa vị trí "${locationToDelete}" khỏi ${changedCount} tài khoản.`, 'danger');
+        } else {
+            showToast(`Không tìm thấy vị trí "${locationToDelete}" để xóa.`, 'info');
+        }
+        hideLocationDropdown();
+    }
 }
 
 function hideLocationDropdown() {
     document.getElementById('customLocationDropdown').classList.remove('show');
 }
+
+// === KẾT THÚC KHU VỰC LOGIC VỊ TRÍ ===
+
 
 function showAltNoteOptions() {
     document.getElementById('noteInputGroup').style.display = 'none';
@@ -1098,12 +1176,14 @@ document.addEventListener('keydown', function (e) {
         if (document.getElementById('historyModal').classList.contains('active')) closeHistoryModal();
         if (document.getElementById('serverStatsModal').classList.contains('active')) closeServerStatsModal();
         if (document.getElementById('accountNotesModal').classList.contains('active')) closeAccountNotesModal();
+        if (document.getElementById('customLocationDropdown').classList.contains('show')) hideLocationDropdown();
     }
 });
 
 window.onclick = function (event) {
     const dropdown = document.getElementById('customLocationDropdown');
-    if (dropdown.classList.contains('show') && !event.target.closest('.location-edit-container') && event.target !== dropdown) {
+    // Đóng dropdown nếu click ra ngoài dropdown VÀ không phải là click vào một ô vị trí
+    if (dropdown.classList.contains('show') && !dropdown.contains(event.target) && !event.target.closest('.location-cell')) {
         hideLocationDropdown();
     }
 
