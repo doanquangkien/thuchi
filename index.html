@@ -132,8 +132,10 @@
     min-width: 120px; max-width: 200px; word-break: break-word; color: #555;
  }
  .location-primary, .location-secondary {
+    display: inline-block; /* Quan trọng để padding và min-height hoạt động */
     cursor: pointer;
-    padding: 4px 6px;
+    padding: 4px 8px; /* Tăng vùng đệm */
+    min-height: 24px; /* Đảm bảo chiều cao tối thiểu */
     border-radius: 6px;
     transition: background-color 0.2s ease;
  }
@@ -153,7 +155,7 @@
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     min-width: 200px;
-    overflow: hidden; /* Bỏ overflow-y, để list tự scroll */
+    overflow: hidden;
  }
  #customLocationDropdown.show { display: block; }
  .location-dropdown-header {
@@ -170,7 +172,7 @@
     outline: none;
  }
  .location-dropdown-list {
-    max-height: 360px;
+    max-height: 360px; /* Hiển thị nhiều mục hơn */
     overflow-y: auto;
     padding: 0; margin: 0;
     list-style: none;
@@ -443,10 +445,26 @@
 </div>
 
 <script>
+// === KHAI BÁO BIẾN TOÀN CỤC MỚI CHO VỊ TRÍ ===
 let data = [];
+let allPrimaryLocations = [];
+let allSecondaryLocations = [];
 let sortOrder = 'diamonds';
 let _noteModalState = {};
 let _accountNotesModalState = {};
+
+// === LOGIC MỚI: LƯU TRỮ VĨNH VIỄN DANH SÁCH VỊ TRÍ ===
+function saveLocations(type) {
+    try {
+        if (type === 'primary') {
+            localStorage.setItem('locations_primary_v1', JSON.stringify(allPrimaryLocations));
+        } else if (type === 'secondary') {
+            localStorage.setItem('locations_secondary_v1', JSON.stringify(allSecondaryLocations));
+        }
+    } catch (e) {
+        console.error("Lỗi khi lưu danh sách vị trí:", e);
+    }
+}
 
 function migrateData(loadedData) {
     let needsSave = false;
@@ -675,7 +693,13 @@ function del(index) {
 
 function resetAll() {
     if (confirm("BẠN CÓ CHẮC MUỐN XOÁ TOÀN BỘ DỮ LIỆU?\n\nHành động này không thể hoàn tác!")) {
-        data = []; save(); render();
+        data = []; 
+        allPrimaryLocations = [];
+        allSecondaryLocations = [];
+        save();
+        saveLocations('primary');
+        saveLocations('secondary');
+        render();
         showToast("Đã xóa toàn bộ dữ liệu!", 'danger');
         clearForm();
     }
@@ -740,39 +764,28 @@ function saveDirectEdit(input, index) {
 
 // === KHU VỰC LOGIC VỊ TRÍ ĐÃ ĐƯỢC THAY THẾ HOÀN TOÀN ===
 
-/**
- * Hiển thị dropdown quản lý vị trí "tất cả trong một".
- */
 function showLocationDropdown(event, accountIndex) {
     event.stopPropagation();
     const target = event.target;
     const dropdown = document.getElementById('customLocationDropdown');
     
-    // Xác định loại vị trí (primary/secondary) dựa trên class của phần tử được click
     let locationType = '';
-    if (target.classList.contains('location-primary')) {
+    if (target.classList.contains('location-primary') || target.closest('.location-primary')) {
         locationType = 'primary';
-    } else if (target.classList.contains('location-secondary')) {
+    } else if (target.classList.contains('location-secondary') || target.closest('.location-secondary')) {
         locationType = 'secondary';
     } else {
-        // Nếu click vào dấu phân cách hoặc vùng trống, không làm gì cả
         return;
     }
 
-    // Thu thập các vị trí đã có, dựa trên loại vị trí
-    const locations = new Set();
-    data.forEach(item => {
-        const loc = item.location?.[locationType];
-        if (loc) locations.add(loc);
-    });
+    const locations = locationType === 'primary' ? allPrimaryLocations : allSecondaryLocations;
     
-    // Tạo HTML cho dropdown
     let listItemsHTML = '';
-    if (locations.size > 0) {
+    if (locations.length > 0) {
         listItemsHTML = [...locations].sort().map(loc => `
             <li data-location="${loc}">
                 <span class="location-text">${loc}</span>
-                <i class="fa-solid fa-times delete-suggestion-btn" data-location-to-delete="${loc}" title="Xóa '${loc}' khỏi tất cả tài khoản"></i>
+                <i class="fa-solid fa-times delete-suggestion-btn" data-location-to-delete="${loc}" title="Xóa '${loc}' khỏi danh sách gợi ý"></i>
             </li>
         `).join('');
     } else {
@@ -788,14 +801,12 @@ function showLocationDropdown(event, accountIndex) {
         </ul>
     `;
 
-    // Định vị và hiển thị dropdown
     const cellRect = target.closest('td').getBoundingClientRect();
     dropdown.style.left = `${cellRect.left + window.scrollX}px`;
     dropdown.style.top = `${cellRect.bottom + window.scrollY}px`;
     dropdown.style.minWidth = `${cellRect.width}px`;
     dropdown.classList.add('show');
 
-    // Gán sự kiện sau khi dropdown đã được thêm vào DOM
     const newLocationInput = document.getElementById('newLocationInput');
     newLocationInput.focus();
     newLocationInput.onkeydown = (e) => {
@@ -809,14 +820,12 @@ function showLocationDropdown(event, accountIndex) {
     };
     
     dropdown.querySelectorAll('.location-dropdown-list li[data-location]').forEach(li => {
-        // Sự kiện chọn một vị trí
         li.querySelector('.location-text').onclick = () => {
             data[accountIndex].location[locationType] = li.dataset.location;
             save();
             render();
             hideLocationDropdown();
         };
-        // Sự kiện xóa một vị trí
         li.querySelector('.delete-suggestion-btn').onclick = (e) => {
             e.stopPropagation();
             deleteSavedLocation(e.target.dataset.locationToDelete, locationType);
@@ -824,23 +833,33 @@ function showLocationDropdown(event, accountIndex) {
     });
 }
 
-/**
- * Thêm một vị trí mới và gán nó cho tài khoản hiện tại.
- */
 function addLocation(newLocation, locationType, accountIndex) {
     data[accountIndex].location[locationType] = newLocation;
+    
+    const locationSet = locationType === 'primary' ? allPrimaryLocations : allSecondaryLocations;
+    if (!locationSet.includes(newLocation)) {
+        locationSet.push(newLocation);
+        saveLocations(locationType);
+    }
+    
     save();
     render();
     hideLocationDropdown();
     showToast(`Đã thêm và chọn vị trí mới: "${newLocation}"`, 'success');
 }
 
-
-/**
- * Xóa một vị trí đã lưu khỏi TẤT CẢ các tài khoản.
- */
 function deleteSavedLocation(locationToDelete, locationType) {
-    if (confirm(`Bạn có chắc muốn XOÁ vị trí "${locationToDelete}" khỏi TẤT CẢ các tài khoản không? Hành động này không thể hoàn tác.`)) {
+    const confirmMessage = `Bạn có chắc muốn XOÁ vĩnh viễn vị trí "${locationToDelete}" khỏi danh sách gợi ý không? \nHành động này cũng sẽ xóa vị trí này khỏi tất cả các tài khoản đang sử dụng nó.`;
+    if (confirm(confirmMessage)) {
+        // Xóa khỏi danh sách gợi ý vĩnh viễn
+        const locationSet = locationType === 'primary' ? allPrimaryLocations : allSecondaryLocations;
+        const indexToRemove = locationSet.indexOf(locationToDelete);
+        if (indexToRemove > -1) {
+            locationSet.splice(indexToRemove, 1);
+            saveLocations(locationType);
+        }
+
+        // Xóa khỏi tất cả các tài khoản đang sử dụng
         let changedCount = 0;
         data.forEach(item => {
             if (item.location && item.location[locationType] === locationToDelete) {
@@ -849,19 +868,17 @@ function deleteSavedLocation(locationToDelete, locationType) {
             }
         });
 
-        if (changedCount > 0) {
-            save();
-            render(); 
-            showToast(`Đã xóa vị trí "${locationToDelete}" khỏi ${changedCount} tài khoản.`, 'danger');
-        } else {
-            showToast(`Không tìm thấy vị trí "${locationToDelete}" để xóa.`, 'info');
-        }
+        if (changedCount > 0) save();
+        
+        render(); 
+        showToast(`Đã xóa vĩnh viễn vị trí "${locationToDelete}".`, 'danger');
         hideLocationDropdown();
     }
 }
 
 function hideLocationDropdown() {
-    document.getElementById('customLocationDropdown').classList.remove('show');
+    const dropdown = document.getElementById('customLocationDropdown');
+    if(dropdown) dropdown.classList.remove('show');
 }
 
 // === KẾT THÚC KHU VỰC LOGIC VỊ TRÍ ===
@@ -1182,7 +1199,6 @@ document.addEventListener('keydown', function (e) {
 
 window.onclick = function (event) {
     const dropdown = document.getElementById('customLocationDropdown');
-    // Đóng dropdown nếu click ra ngoài dropdown VÀ không phải là click vào một ô vị trí
     if (dropdown.classList.contains('show') && !dropdown.contains(event.target) && !event.target.closest('.location-cell')) {
         hideLocationDropdown();
     }
@@ -1205,6 +1221,7 @@ function updateRelativeTimes() {
 }
 
 function initializeApp() {
+    // Tải dữ liệu chính
     let loadedData = [];
     try {
         const rawData = localStorage.getItem("kimcuong_data_v3");
@@ -1216,6 +1233,17 @@ function initializeApp() {
         loadedData = [];
     }
     
+    // Tải danh sách vị trí vĩnh viễn
+    try {
+        const primaryLocs = localStorage.getItem("locations_primary_v1");
+        if (primaryLocs) allPrimaryLocations = JSON.parse(primaryLocs);
+    } catch (e) { console.error("Lỗi khi parse vị trí chính:", e); }
+    try {
+        const secondaryLocs = localStorage.getItem("locations_secondary_v1");
+        if (secondaryLocs) allSecondaryLocations = JSON.parse(secondaryLocs);
+    } catch (e) { console.error("Lỗi khi parse vị trí phụ:", e); }
+
+
     const { migratedData, needsSave } = migrateData(loadedData);
     data = migratedData;
     if (needsSave) {
